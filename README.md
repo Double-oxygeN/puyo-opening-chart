@@ -14,14 +14,16 @@
 
 ## 技術スタック
 
-| カテゴリ | 技術 |
-|---------|------|
-| ビルドツール | [Vite](https://vite.dev/) 8 |
-| フレームワーク | [React](https://react.dev/) 19 + TypeScript 6 |
-| スタイリング | [TailwindCSS](https://tailwindcss.com/) v4 |
-| ユニットテスト | [Vitest](https://vitest.dev/) + Testing Library |
-| E2Eテスト | [Playwright](https://playwright.dev/) |
-| リンター | [ESLint](https://eslint.org/) |
+| カテゴリ       | 技術                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------ |
+| ビルドツール   | [Vite](https://vite.dev/) 8                                                                            |
+| フレームワーク | [React](https://react.dev/) 19 + TypeScript 6                                                          |
+| スタイリング   | [TailwindCSS](https://tailwindcss.com/) v4                                                             |
+| ユニットテスト | [Vitest](https://vitest.dev/) + Testing Library                                                        |
+| E2Eテスト      | [Playwright](https://playwright.dev/)                                                                  |
+| リンター       | [ESLint](https://eslint.org/)（型チェック強化）                                                        |
+| フォーマッター | [Prettier](https://prettier.io/)                                                                       |
+| Gitフック      | [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged) |
 
 ## セットアップ
 
@@ -84,7 +86,7 @@ npm run test:e2e
   "nodes": [
     {
       "id": "node-0",
-      "board": [[0,0,0,0,0,0], "..."],
+      "board": [[0, 0, 0, 0, 0, 0], "..."],
       "memo": "空盤面"
     }
   ],

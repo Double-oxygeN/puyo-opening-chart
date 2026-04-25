@@ -5,9 +5,7 @@ function App() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           ぷよぷよ通 初手研究チャート
         </h1>
-        <p className="text-gray-600">
-          盤面グラフエディタ（開発中）
-        </p>
+        <p className="text-gray-600">盤面グラフエディタ（開発中）</p>
       </div>
     </div>
   )
