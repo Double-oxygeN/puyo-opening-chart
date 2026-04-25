@@ -104,4 +104,4 @@ npm run test:e2e
 
 ## ライセンス
 
-MIT
+Apache License, Version 2.0 — 詳細は [LICENSE](./LICENSE) を参照してください。
