@@ -1,0 +1,217 @@
+import { describe, it, expect } from 'vitest'
+import {
+  createInitialPairState,
+  moveLeft,
+  moveRight,
+  rotateClockwise,
+  rotateCounterClockwise,
+  placePair,
+  getDropPreview,
+  Rotation,
+  INITIAL_COL,
+} from './pair'
+import { PuyoColor } from './color'
+import { createEmptyBoard, getCell, setCell, BOARD_COLS } from './board'
+
+const RED_BLUE = { axis: PuyoColor.Red, child: PuyoColor.Blue } as const
+
+describe('createInitialPairState', () => {
+  it('creates state at column 2 with rotation Up', () => {
+    const state = createInitialPairState(RED_BLUE)
+    expect(state.col).toBe(INITIAL_COL)
+    expect(state.rotation).toBe(Rotation.Up)
+    expect(state.pair).toEqual(RED_BLUE)
+  })
+})
+
+describe('moveLeft / moveRight', () => {
+  it('moves left', () => {
+    const state = createInitialPairState(RED_BLUE)
+    const moved = moveLeft(state)
+    expect(moved.col).toBe(INITIAL_COL - 1)
+  })
+
+  it('moves right', () => {
+    const state = createInitialPairState(RED_BLUE)
+    const moved = moveRight(state)
+    expect(moved.col).toBe(INITIAL_COL + 1)
+  })
+
+  it('does not move past left wall', () => {
+    let state = createInitialPairState(RED_BLUE)
+    // Move all the way left
+    for (let i = 0; i < BOARD_COLS; i++) {
+      state = moveLeft(state)
+    }
+    // Should be at column 0 (with child above, so col 0 is valid)
+    expect(state.col).toBe(0)
+    // One more should not change
+    const same = moveLeft(state)
+    expect(same.col).toBe(0)
+  })
+
+  it('does not move past right wall', () => {
+    let state = createInitialPairState(RED_BLUE)
+    for (let i = 0; i < BOARD_COLS; i++) {
+      state = moveRight(state)
+    }
+    expect(state.col).toBe(BOARD_COLS - 1)
+    const same = moveRight(state)
+    expect(same.col).toBe(BOARD_COLS - 1)
+  })
+
+  it('does not move right when child is on the right and at wall', () => {
+    let state = createInitialPairState(RED_BLUE)
+    state = rotateClockwise(state) // child to the right
+    // Move to rightmost valid position
+    for (let i = 0; i < BOARD_COLS; i++) {
+      state = moveRight(state)
+    }
+    expect(state.col).toBe(BOARD_COLS - 2) // axis at 4 (0-indexed), child at 5
+  })
+})
+
+describe('rotateClockwise / rotateCounterClockwise', () => {
+  it('cycles through rotations clockwise', () => {
+    let state = createInitialPairState(RED_BLUE)
+    expect(state.rotation).toBe(Rotation.Up)
+
+    state = rotateClockwise(state)
+    expect(state.rotation).toBe(Rotation.Right)
+
+    state = rotateClockwise(state)
+    expect(state.rotation).toBe(Rotation.Down)
+
+    state = rotateClockwise(state)
+    expect(state.rotation).toBe(Rotation.Left)
+
+    state = rotateClockwise(state)
+    expect(state.rotation).toBe(Rotation.Up)
+  })
+
+  it('cycles counterclockwise', () => {
+    let state = createInitialPairState(RED_BLUE)
+    state = rotateCounterClockwise(state)
+    expect(state.rotation).toBe(Rotation.Left)
+  })
+
+  it('wall kicks when rotating into left wall', () => {
+    let state = createInitialPairState(RED_BLUE)
+    state = { ...state, col: 0, rotation: Rotation.Up }
+
+    // Rotating CCW: Up → Left, child goes to col -1 → wall kick pushes right
+    const rotated = rotateCounterClockwise(state)
+    expect(rotated.rotation).toBe(Rotation.Left)
+    expect(rotated.col).toBe(1) // kicked right
+  })
+
+  it('wall kicks when rotating into right wall', () => {
+    let state = createInitialPairState(RED_BLUE)
+    state = { ...state, col: BOARD_COLS - 1, rotation: Rotation.Up }
+
+    // Rotating CW: Up → Right, child goes to col 6 → wall kick pushes left
+    const rotated = rotateClockwise(state)
+    expect(rotated.rotation).toBe(Rotation.Right)
+    expect(rotated.col).toBe(BOARD_COLS - 2) // kicked left
+  })
+})
+
+describe('placePair', () => {
+  it('places a vertical pair on empty board', () => {
+    const board = createEmptyBoard()
+    const state = createInitialPairState(RED_BLUE) // col=2, rotation=Up
+
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+
+    // axis (Red) at row 0, child (Blue) at row 1
+    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Red)
+    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Blue)
+  })
+
+  it('places on top of existing puyos', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 2, PuyoColor.Green)
+
+    const state = createInitialPairState(RED_BLUE)
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+
+    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Green) // existing
+    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Red) // axis
+    expect(getCell(result!, 2, 2)).toBe(PuyoColor.Blue) // child
+  })
+
+  it('places horizontal pair in separate columns', () => {
+    const board = createEmptyBoard()
+    let state = createInitialPairState(RED_BLUE)
+    state = rotateClockwise(state) // child to the right (col 3)
+
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+
+    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Red) // axis at col 2
+    expect(getCell(result!, 0, 3)).toBe(PuyoColor.Blue) // child at col 3
+  })
+
+  it('handles chigiiri (different heights)', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 2, PuyoColor.Green) // col 2 has 1 puyo
+
+    let state = createInitialPairState(RED_BLUE)
+    state = rotateClockwise(state) // child to right (col 3)
+
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+
+    // axis drops to row 1 (on top of Green), child drops to row 0
+    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Red)
+    expect(getCell(result!, 0, 3)).toBe(PuyoColor.Blue)
+  })
+
+  it('places pair with child below (rotation Down)', () => {
+    const board = createEmptyBoard()
+    let state = createInitialPairState(RED_BLUE)
+    state = { ...state, rotation: Rotation.Down }
+
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+
+    // child (Blue) below, axis (Red) above
+    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Blue) // child first
+    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Red) // axis on top
+  })
+
+  it('returns null when column is full', () => {
+    let board = createEmptyBoard()
+    for (let row = 0; row < 13; row++) {
+      board = setCell(board, row, 2, PuyoColor.Green)
+    }
+
+    const state = createInitialPairState(RED_BLUE)
+    expect(placePair(board, state)).toBeNull()
+  })
+})
+
+describe('getDropPreview', () => {
+  it('returns preview positions for vertical pair', () => {
+    const board = createEmptyBoard()
+    const state = createInitialPairState(RED_BLUE)
+
+    const preview = getDropPreview(board, state)
+    expect(preview).not.toBeNull()
+    expect(preview!.axis).toEqual({ row: 0, col: 2 })
+    expect(preview!.child).toEqual({ row: 1, col: 2 })
+  })
+
+  it('returns preview for horizontal pair', () => {
+    const board = createEmptyBoard()
+    let state = createInitialPairState(RED_BLUE)
+    state = rotateClockwise(state)
+
+    const preview = getDropPreview(board, state)
+    expect(preview).not.toBeNull()
+    expect(preview!.axis).toEqual({ row: 0, col: 2 })
+    expect(preview!.child).toEqual({ row: 0, col: 3 })
+  })
+})
