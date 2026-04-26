@@ -19,8 +19,10 @@ const THUMBNAIL_HEIGHT = 72
 const THUMBNAIL_WIDTH = Math.ceil((THUMBNAIL_HEIGHT / BOARD_ROWS) * BOARD_COLS)
 const NODE_WIDTH = THUMBNAIL_WIDTH + 8
 const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8
-const H_GAP = 10
-const V_GAP = 48
+/** 深さ方向（左→右）のノード間隔 */
+const DEPTH_GAP = 48
+/** 兄弟方向（上→下）のノード間隔 */
+const SIBLING_GAP = 10
 
 function computeTreeLayout(graph: Graph): TreeLayout {
   const positions = new Map<NodeId, { x: number; y: number }>()
@@ -56,24 +58,25 @@ function computeTreeLayout(graph: Graph): TreeLayout {
     }
   }
 
-  // Position nodes
-  let maxWidth = 0
+  // Position nodes: 深さを横方向（x）、兄弟を縦方向（y）に配置
+  let maxHeight = 0
   for (let depth = 0; depth < levels.length; depth++) {
     const level = levels[depth]
-    const totalWidth = level.length * NODE_WIDTH + (level.length - 1) * H_GAP
-    maxWidth = Math.max(maxWidth, totalWidth)
-    const startX = -totalWidth / 2
+    const totalHeight =
+      level.length * NODE_HEIGHT + (level.length - 1) * SIBLING_GAP
+    maxHeight = Math.max(maxHeight, totalHeight)
+    const startY = -totalHeight / 2
 
     for (let i = 0; i < level.length; i++) {
       positions.set(level[i], {
-        x: startX + i * (NODE_WIDTH + H_GAP) + NODE_WIDTH / 2,
-        y: depth * (NODE_HEIGHT + V_GAP) + NODE_HEIGHT / 2,
+        x: depth * (NODE_WIDTH + DEPTH_GAP) + NODE_WIDTH / 2,
+        y: startY + i * (NODE_HEIGHT + SIBLING_GAP) + NODE_HEIGHT / 2,
       })
     }
   }
 
-  const height = levels.length * (NODE_HEIGHT + V_GAP)
-  return { nodePositions: positions, width: maxWidth + NODE_WIDTH, height }
+  const width = levels.length * (NODE_WIDTH + DEPTH_GAP)
+  return { nodePositions: positions, width, height: maxHeight + NODE_HEIGHT }
 }
 
 export default function GraphTreeView({
@@ -92,7 +95,7 @@ export default function GraphTreeView({
       <svg
         width={svgWidth}
         height={svgHeight}
-        viewBox={`${-svgWidth / 2} 0 ${svgWidth} ${svgHeight}`}
+        viewBox={`0 ${-svgHeight / 2} ${svgWidth} ${svgHeight}`}
       >
         {/* エッジ */}
         {graph.edges.map((edge) => {
@@ -103,16 +106,16 @@ export default function GraphTreeView({
           const axisColor = PUYO_HEX_COLORS[edge.pair.axis]
           const childColor = PUYO_HEX_COLORS[edge.pair.child]
 
-          const midX = from.x + (to.x - from.x) * 0.5
-          const midY = (from.y + NODE_HEIGHT / 2 + to.y - NODE_HEIGHT / 2) / 2
+          const midX = (from.x + NODE_WIDTH / 2 + to.x - NODE_WIDTH / 2) / 2
+          const midY = from.y + (to.y - from.y) * 0.5
 
           return (
             <g key={edge.id}>
               <line
-                x1={from.x}
-                y1={from.y + NODE_HEIGHT / 2}
-                x2={to.x}
-                y2={to.y - NODE_HEIGHT / 2}
+                x1={from.x + NODE_WIDTH / 2}
+                y1={from.y}
+                x2={to.x - NODE_WIDTH / 2}
+                y2={to.y}
                 stroke="#9ca3af"
                 strokeWidth={2}
               />
