@@ -1,8 +1,14 @@
 import { useReducer, useCallback } from 'react'
 import type { Graph, GraphNode, NodeId } from '../domain/graph'
-import { createInitialGraph, addNode, addEdge } from '../domain/graph'
+import {
+  createInitialGraph,
+  addNode,
+  addEdge,
+  findMatchingEdge,
+  updateNodeBoard,
+} from '../domain/graph'
 import { placePair } from '../domain/pair'
-import type { PairState } from '../domain/pair'
+import type { PairState, PuyoPair } from '../domain/pair'
 
 interface GraphState {
   graph: Graph
@@ -11,7 +17,12 @@ interface GraphState {
 
 type GraphAction =
   | { type: 'selectNode'; nodeId: NodeId }
-  | { type: 'placeAndAddNode'; pairState: PairState }
+  | {
+      type: 'placeAndAddNode'
+      pairState: PairState
+      next?: PuyoPair
+      nextNext?: PuyoPair
+    }
 
 function graphReducer(state: GraphState, action: GraphAction): GraphState {
   switch (action.type) {
@@ -27,12 +38,33 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
       const newBoard = placePair(currentNode.board, action.pairState)
       if (!newBoard) return state
 
+      // 同一辺（ツモ・ネクスト・ネクネクが一致）を検索
+      const existingEdge = findMatchingEdge(
+        state.graph,
+        state.selectedNodeId,
+        action.pairState.pair,
+        action.next,
+        action.nextNext,
+      )
+
+      if (existingEdge) {
+        // 既存ノードの盤面を上書き
+        const updatedGraph = updateNodeBoard(
+          state.graph,
+          existingEdge.to,
+          newBoard,
+        )
+        return { graph: updatedGraph, selectedNodeId: existingEdge.to }
+      }
+
       const [graphWithNode, newNode] = addNode(state.graph, newBoard)
       const graphWithEdge = addEdge(
         graphWithNode,
         state.selectedNodeId,
         newNode.id,
         action.pairState.pair,
+        action.next,
+        action.nextNext,
       )
 
       return { graph: graphWithEdge, selectedNodeId: newNode.id }
@@ -50,7 +82,11 @@ interface UseGraphReturn {
   selectedNode: GraphNode | undefined
   selectedNodeId: NodeId
   selectNode: (nodeId: NodeId) => void
-  placeAndAddNode: (pairState: PairState) => boolean
+  placeAndAddNode: (
+    pairState: PairState,
+    next?: PuyoPair,
+    nextNext?: PuyoPair,
+  ) => boolean
 }
 
 export function useGraph(): UseGraphReturn {
@@ -69,20 +105,14 @@ export function useGraph(): UseGraphReturn {
   }, [])
 
   const placeAndAddNode = useCallback(
-    (pairState: PairState): boolean => {
-      // canPlace を先に判定してから dispatch する。
-      // useReducer の dispatch は同期的に reducer を実行するが、
-      // state の反映は次のレンダーまで遅延するため、
-      // dispatch 後に state を見ても古い値が返る。
-      // ただし reducer 内で状態が変わらなかった場合は
-      // ここでの事前チェックと一致するので問題ない。
+    (pairState: PairState, next?: PuyoPair, nextNext?: PuyoPair): boolean => {
       const currentNode = state.graph.nodes.find(
         (n) => n.id === state.selectedNodeId,
       )
       if (!currentNode) return false
       if (placePair(currentNode.board, pairState) === null) return false
 
-      dispatch({ type: 'placeAndAddNode', pairState })
+      dispatch({ type: 'placeAndAddNode', pairState, next, nextNext })
       return true
     },
     [state],

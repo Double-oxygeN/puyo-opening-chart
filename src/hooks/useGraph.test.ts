@@ -74,9 +74,9 @@ describe('useGraph', () => {
       result.current.selectNode('node-0' as NodeId)
     })
 
-    // Place second child from root (different column)
+    // Place second child from root (different pair to create a branch)
     act(() => {
-      result.current.placeAndAddNode(makePairState(RED_BLUE, 4, Rotation.Up))
+      result.current.placeAndAddNode(makePairState(RED_RED, 4, Rotation.Up))
     })
 
     expect(result.current.graph.nodes).toHaveLength(3)
@@ -110,6 +110,69 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(2)
     // The chain should be: node-0 → node-1 → node-2
     expect(result.current.selectedNodeId).toBe('node-2')
+  })
+
+  it('overwrites existing node when edge matches (same pair/next/nextNext)', () => {
+    const { result } = renderHook(() => useGraph())
+    const next = { axis: PuyoColor.Green, child: PuyoColor.Green }
+
+    // Place first time with next
+    act(() => {
+      result.current.placeAndAddNode(
+        makePairState(RED_BLUE, 0, Rotation.Up),
+        next,
+      )
+    })
+    expect(result.current.graph.nodes).toHaveLength(2)
+    expect(result.current.graph.edges).toHaveLength(1)
+    expect(result.current.graph.edges[0].next).toEqual(next)
+
+    // Go back to root
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+
+    // Place same pair+next again (different column to get different board)
+    act(() => {
+      result.current.placeAndAddNode(
+        makePairState(RED_BLUE, 3, Rotation.Up),
+        next,
+      )
+    })
+
+    // Should NOT create a new node; should overwrite existing
+    expect(result.current.graph.nodes).toHaveLength(2)
+    expect(result.current.graph.edges).toHaveLength(1)
+    // Should select the existing node
+    expect(result.current.selectedNodeId).toBe('node-1')
+  })
+
+  it('creates new node when edge differs in next', () => {
+    const { result } = renderHook(() => useGraph())
+    const next1 = { axis: PuyoColor.Green, child: PuyoColor.Green }
+    const next2 = { axis: PuyoColor.Blue, child: PuyoColor.Blue }
+
+    act(() => {
+      result.current.placeAndAddNode(
+        makePairState(RED_BLUE, 0, Rotation.Up),
+        next1,
+      )
+    })
+
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+
+    act(() => {
+      result.current.placeAndAddNode(
+        makePairState(RED_BLUE, 0, Rotation.Up),
+        next2,
+      )
+    })
+
+    // Different next → new node
+    expect(result.current.graph.nodes).toHaveLength(3)
+    expect(result.current.graph.edges).toHaveLength(2)
   })
 
   it('select + place in same batch uses the correct node', () => {

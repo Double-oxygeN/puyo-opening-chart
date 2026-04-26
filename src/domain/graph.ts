@@ -20,6 +20,8 @@ export interface GraphEdge {
   readonly from: NodeId
   readonly to: NodeId
   readonly pair: PuyoPair
+  readonly next?: PuyoPair
+  readonly nextNext?: PuyoPair
 }
 
 /** 有向グラフ */
@@ -61,12 +63,16 @@ export function addEdge(
   from: NodeId,
   to: NodeId,
   pair: PuyoPair,
+  next?: PuyoPair,
+  nextNext?: PuyoPair,
 ): Graph {
   const edge: GraphEdge = {
     id: `edge-${graph.edgeIdSeq}` as EdgeId,
     from,
     to,
     pair,
+    ...(next != null ? { next } : {}),
+    ...(nextNext != null ? { nextNext } : {}),
   }
   return {
     ...graph,
@@ -90,4 +96,48 @@ export function getChildNodes(graph: Graph, nodeId: NodeId): GraphNode[] {
 /** ルートノード（edges で from として参照されないノード、または最初のノード）を取得する */
 export function getRootNode(graph: Graph): GraphNode | undefined {
   return graph.nodes[0]
+}
+
+/** 組ぷよが一致するか判定する */
+function pairsEqual(a: PuyoPair | undefined, b: PuyoPair | undefined): boolean {
+  if (a == null && b == null) return true
+  if (a == null || b == null) return false
+  return a.axis === b.axis && a.child === b.child
+}
+
+/** 同じ親ノードからツモ・ネクスト・ネクネクがすべて一致するエッジを検索する */
+export function findMatchingEdge(
+  graph: Graph,
+  fromNodeId: NodeId,
+  pair: PuyoPair,
+  next?: PuyoPair,
+  nextNext?: PuyoPair,
+): GraphEdge | undefined {
+  return graph.edges.find(
+    (e) =>
+      e.from === fromNodeId &&
+      pairsEqual(e.pair, pair) &&
+      pairsEqual(e.next, next) &&
+      pairsEqual(e.nextNext, nextNext),
+  )
+}
+
+/** 既存ノードの盤面を上書きする */
+export function updateNodeBoard(
+  graph: Graph,
+  nodeId: NodeId,
+  board: Board,
+): Graph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((n) => (n.id === nodeId ? { ...n, board } : n)),
+  }
+}
+
+/** ノードへの親エッジを取得する */
+export function getParentEdge(
+  graph: Graph,
+  nodeId: NodeId,
+): GraphEdge | undefined {
+  return graph.edges.find((e) => e.to === nodeId)
 }

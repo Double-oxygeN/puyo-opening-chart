@@ -1,6 +1,7 @@
-import type { Graph, NodeId } from '../domain/graph'
+import type { Graph, GraphEdge, NodeId } from '../domain/graph'
 import { BOARD_COLS, BOARD_ROWS } from '../domain/board'
 import { PUYO_HEX_COLORS } from '../domain/color'
+import type { PuyoPair } from '../domain/pair'
 import NodeThumbnail from './NodeThumbnail'
 
 interface GraphTreeViewProps {
@@ -79,6 +80,57 @@ function computeTreeLayout(graph: Graph): TreeLayout {
   return { nodePositions: positions, width, height: maxHeight + NODE_HEIGHT }
 }
 
+/** エッジ上に組ぷよペアを1つ描画する（子ぷよ上・軸ぷよ下） */
+function renderPairCircles(pair: PuyoPair, cx: number, cy: number) {
+  return (
+    <>
+      <circle
+        cx={cx}
+        cy={cy - 6}
+        r={5}
+        fill={PUYO_HEX_COLORS[pair.child]}
+        stroke="#fff"
+        strokeWidth={1}
+      />
+      <circle
+        cx={cx}
+        cy={cy + 6}
+        r={5}
+        fill={PUYO_HEX_COLORS[pair.axis]}
+        stroke="#fff"
+        strokeWidth={1}
+      />
+    </>
+  )
+}
+
+/** エッジラベル: 1〜3組の組ぷよを横に並べて描画 */
+function EdgeLabel({
+  edge,
+  midX,
+  midY,
+}: {
+  edge: GraphEdge
+  midX: number
+  midY: number
+}) {
+  const pairs: PuyoPair[] = [edge.pair]
+  if (edge.next) pairs.push(edge.next)
+  if (edge.nextNext) pairs.push(edge.nextNext)
+
+  const pairSpacing = 14
+  const totalWidth = (pairs.length - 1) * pairSpacing
+  const startX = midX - totalWidth / 2
+
+  return (
+    <>
+      {pairs.map((pair, i) =>
+        renderPairCircles(pair, startX + i * pairSpacing, midY),
+      )}
+    </>
+  )
+}
+
 export default function GraphTreeView({
   graph,
   selectedNodeId,
@@ -103,9 +155,6 @@ export default function GraphTreeView({
           const to = layout.nodePositions.get(edge.to)
           if (!from || !to) return null
 
-          const axisColor = PUYO_HEX_COLORS[edge.pair.axis]
-          const childColor = PUYO_HEX_COLORS[edge.pair.child]
-
           const midX = (from.x + NODE_WIDTH / 2 + to.x - NODE_WIDTH / 2) / 2
           const midY = from.y + (to.y - from.y) * 0.5
 
@@ -119,23 +168,7 @@ export default function GraphTreeView({
                 stroke="#9ca3af"
                 strokeWidth={2}
               />
-              {/* エッジラベル: 組ぷよ（上=子ぷよ、下=軸ぷよ） */}
-              <circle
-                cx={midX}
-                cy={midY - 6}
-                r={5}
-                fill={childColor}
-                stroke="#fff"
-                strokeWidth={1}
-              />
-              <circle
-                cx={midX}
-                cy={midY + 6}
-                r={5}
-                fill={axisColor}
-                stroke="#fff"
-                strokeWidth={1}
-              />
+              <EdgeLabel edge={edge} midX={midX} midY={midY} />
             </g>
           )
         })}

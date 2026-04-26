@@ -1,12 +1,25 @@
 import { useState } from 'react'
 import type { FilledColor } from '../domain/color'
 import type { PuyoPair } from '../domain/pair'
-import { FILLED_COLORS, COLOR_LABELS, PUYO_BG_CLASSES } from '../domain/color'
+import {
+  PuyoColor,
+  FILLED_COLORS,
+  COLOR_LABELS,
+  PUYO_BG_CLASSES,
+} from '../domain/color'
 
 interface PairEditMenuProps {
-  pair: PuyoPair
+  /** 現在の組ぷよ（null = 未設定、新規設定時のデフォルトを使う） */
+  pair: PuyoPair | null
   onConfirm: (pair: PuyoPair) => void
+  /** クリアコールバック（設定されている場合のみ「クリア」ボタンを表示） */
+  onClear?: () => void
   onCancel: () => void
+}
+
+const DEFAULT_PAIR: PuyoPair = {
+  axis: PuyoColor.Red,
+  child: PuyoColor.Red,
 }
 
 function ColorButton({
@@ -34,12 +47,13 @@ function ColorButton({
 export default function PairEditMenu({
   pair,
   onConfirm,
+  onClear,
   onCancel,
 }: PairEditMenuProps) {
-  const [draft, setDraft] = useState<PuyoPair>(pair)
+  const [draft, setDraft] = useState<PuyoPair>(pair ?? DEFAULT_PAIR)
 
   return (
-    <div className="absolute top-full right-0 mt-2 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-3 flex flex-col gap-3">
+    <div className="absolute top-full right-0 mt-2 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-3 flex flex-col gap-3 min-w-max">
       <div>
         <span className="text-sm font-medium text-gray-700 block mb-1">
           子ぷよ
@@ -71,6 +85,15 @@ export default function PairEditMenu({
         </div>
       </div>
       <div className="flex gap-2 justify-end">
+        {onClear && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="px-3 py-1 text-sm text-red-600 hover:text-red-800 rounded border border-red-300 hover:bg-red-50 mr-auto"
+          >
+            クリア
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}

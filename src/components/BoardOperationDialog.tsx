@@ -11,6 +11,18 @@ interface BoardOperationDialogProps {
   onChangePair: (pair: PuyoPair) => void
   onUpdatePairState: (state: PairState) => void
   onPlace: () => void
+  /** ネクスト（null = 未設定） */
+  next: PuyoPair | null
+  /** ネクネク（null = 未設定） */
+  nextNext: PuyoPair | null
+  onChangeNext: (pair: PuyoPair) => void
+  onChangeNextNext: (pair: PuyoPair) => void
+  onClearNext: () => void
+  onClearNextNext: () => void
+  /** ツモの編集が可能か */
+  pairEditable: boolean
+  /** ネクストの編集が可能か */
+  nextEditable: boolean
 }
 
 export default function BoardOperationDialog({
@@ -20,6 +32,14 @@ export default function BoardOperationDialog({
   onChangePair,
   onUpdatePairState,
   onPlace,
+  next,
+  nextNext,
+  onChangeNext,
+  onChangeNextNext,
+  onClearNext,
+  onClearNextNext,
+  pairEditable,
+  nextEditable,
 }: BoardOperationDialogProps) {
   return (
     <div className="fixed top-0 right-0 bottom-0 z-50 pointer-events-none flex items-start justify-end p-6 pt-20">
@@ -37,7 +57,26 @@ export default function BoardOperationDialog({
 
           {/* 組ぷよ編集領域 */}
           <div className="flex flex-col items-center gap-4">
-            <PairSlot label="ツモ" pair={pair} onChangePair={onChangePair} />
+            <PairSlot
+              label="ツモ"
+              pair={pair}
+              onChangePair={onChangePair}
+              editable={pairEditable}
+            />
+            <PairSlot
+              label="ネクスト"
+              pair={next}
+              onChangePair={onChangeNext}
+              onClear={onClearNext}
+              editable={nextEditable}
+            />
+            <PairSlot
+              label="ネクネク"
+              pair={nextNext}
+              onChangePair={onChangeNextNext}
+              onClear={onClearNextNext}
+              disabled={next === null}
+            />
           </div>
         </div>
 
