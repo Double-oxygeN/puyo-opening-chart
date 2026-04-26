@@ -3,9 +3,8 @@ import { PuyoColor } from './domain/color'
 import type { PuyoPair, PairState } from './domain/pair'
 import { createInitialPairState } from './domain/pair'
 import { useGraph } from './hooks/useGraph'
-import BoardView from './components/BoardView'
-import PairSelector from './components/PairSelector'
-import PairController from './components/PairController'
+import type { NodeId } from './domain/graph'
+import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
 
 const DEFAULT_PAIR: PuyoPair = {
@@ -21,6 +20,7 @@ function App() {
   const [pairState, setPairState] = useState<PairState>(
     createInitialPairState(DEFAULT_PAIR),
   )
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const handleChangePair = useCallback((newPair: PuyoPair) => {
     setPair(newPair)
@@ -34,6 +34,19 @@ function App() {
     }
   }, [placeAndAddNode, pairState, pair])
 
+  const handleSelectNode = useCallback(
+    (nodeId: NodeId) => {
+      selectNode(nodeId)
+      setPairState(createInitialPairState(pair))
+      setIsDialogOpen(true)
+    },
+    [selectNode, pair],
+  )
+
+  const handleBackgroundClick = useCallback(() => {
+    setIsDialogOpen(false)
+  }, [])
+
   const currentBoard = selectedNode?.board
 
   return (
@@ -45,41 +58,29 @@ function App() {
         </h1>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* 左: グラフツリー */}
-        <div className="w-1/2 border-r border-gray-200 bg-white overflow-auto">
-          <div className="p-4">
-            <h2 className="text-sm font-medium text-gray-500 mb-2">
-              グラフツリー
-            </h2>
-            <GraphTreeView
-              graph={graph}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={selectNode}
-            />
-          </div>
-        </div>
-
-        {/* 右: 盤面 + 操作パネル */}
-        <div className="w-1/2 flex flex-col items-center p-6 gap-6 overflow-auto">
-          <h2 className="text-sm font-medium text-gray-500">盤面</h2>
-
-          {currentBoard && (
-            <>
-              <BoardView board={currentBoard} pairState={pairState} />
-
-              <div className="flex flex-col gap-4 items-center">
-                <PairSelector pair={pair} onChangePair={handleChangePair} />
-                <PairController
-                  pairState={pairState}
-                  onUpdatePairState={setPairState}
-                  onPlace={handlePlace}
-                />
-              </div>
-            </>
-          )}
+      <div
+        className="flex-1 overflow-auto bg-white"
+        onClick={handleBackgroundClick}
+      >
+        <div className="p-4">
+          <GraphTreeView
+            graph={graph}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={handleSelectNode}
+          />
         </div>
       </div>
+
+      {isDialogOpen && currentBoard && (
+        <BoardOperationDialog
+          board={currentBoard}
+          pair={pair}
+          pairState={pairState}
+          onChangePair={handleChangePair}
+          onUpdatePairState={setPairState}
+          onPlace={handlePlace}
+        />
+      )}
     </div>
   )
 }

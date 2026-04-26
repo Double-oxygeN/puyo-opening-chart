@@ -7,4 +7,9 @@ describe('App', () => {
     render(<App />)
     expect(screen.getByText('ぷよぷよ通 初手研究チャート')).toBeInTheDocument()
   })
+
+  it('does not show the board operation dialog initially', () => {
+    render(<App />)
+    expect(screen.queryByText('盤面操作')).not.toBeInTheDocument()
+  })
 })

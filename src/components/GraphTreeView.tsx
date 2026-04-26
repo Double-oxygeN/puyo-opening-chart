@@ -158,7 +158,10 @@ export default function GraphTreeView({
                   board={node.board}
                   height={THUMBNAIL_HEIGHT}
                   selected={node.id === selectedNodeId}
-                  onClick={() => onSelectNode(node.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSelectNode(node.id)
+                  }}
                 />
               </div>
             </foreignObject>

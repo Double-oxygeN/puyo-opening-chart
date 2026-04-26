@@ -7,7 +7,7 @@ interface NodeThumbnailProps {
   /** サムネイルの高さ（px） */
   height?: number
   selected?: boolean
-  onClick?: () => void
+  onClick?: (e: React.MouseEvent) => void
 }
 
 export default function NodeThumbnail({
