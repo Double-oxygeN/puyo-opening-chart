@@ -26,8 +26,7 @@ test('opens board operation dialog on node click', async ({ page }) => {
 
   // ダイアログが表示される
   await expect(page.getByText('盤面操作')).toBeVisible()
-  await expect(page.getByText('軸ぷよ')).toBeVisible()
-  await expect(page.getByText('子ぷよ')).toBeVisible()
+  await expect(page.getByText('ツモ')).toBeVisible()
 })
 
 test('closes dialog on background click', async ({ page }) => {
