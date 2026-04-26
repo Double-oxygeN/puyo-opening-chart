@@ -1,6 +1,6 @@
 import type { Board } from './board'
 import type { PuyoPair } from './pair'
-import { createEmptyBoard } from './board'
+import { createEmptyBoard, boardsEqual } from './board'
 
 /** ノードの一意識別子 */
 export type NodeId = string & { readonly __brand: 'NodeId' }
@@ -8,10 +8,17 @@ export type NodeId = string & { readonly __brand: 'NodeId' }
 /** エッジの一意識別子 */
 export type EdgeId = string & { readonly __brand: 'EdgeId' }
 
+/** ノードのツモ確定制約: このノードで確定しているツモとネクスト */
+export interface TsumoConstraint {
+  readonly currentPair?: PuyoPair
+  readonly nextPair?: PuyoPair
+}
+
 /** グラフのノード: 盤面の状態 */
 export interface GraphNode {
   readonly id: NodeId
   readonly board: Board
+  readonly constraint?: TsumoConstraint
 }
 
 /** グラフのエッジ: 組ぷよの配置による遷移 */
@@ -42,10 +49,15 @@ export function createInitialGraph(): Graph {
 }
 
 /** グラフにノードを追加する */
-export function addNode(graph: Graph, board: Board): [Graph, GraphNode] {
+export function addNode(
+  graph: Graph,
+  board: Board,
+  constraint?: TsumoConstraint,
+): [Graph, GraphNode] {
   const node: GraphNode = {
     id: `node-${graph.nodeIdSeq}` as NodeId,
     board,
+    ...(constraint != null ? { constraint } : {}),
   }
   return [
     {
@@ -81,23 +93,6 @@ export function addEdge(
   }
 }
 
-/** ノードの子エッジを取得する */
-export function getChildEdges(graph: Graph, nodeId: NodeId): GraphEdge[] {
-  return graph.edges.filter((e) => e.from === nodeId)
-}
-
-/** ノードの子ノードを取得する */
-export function getChildNodes(graph: Graph, nodeId: NodeId): GraphNode[] {
-  const childEdges = getChildEdges(graph, nodeId)
-  const childIds = new Set(childEdges.map((e) => e.to))
-  return graph.nodes.filter((n) => childIds.has(n.id))
-}
-
-/** ルートノード（edges で from として参照されないノード、または最初のノード）を取得する */
-export function getRootNode(graph: Graph): GraphNode | undefined {
-  return graph.nodes[0]
-}
-
 /** 組ぷよが一致するか判定する */
 function pairsEqual(a: PuyoPair | undefined, b: PuyoPair | undefined): boolean {
   if (a == null && b == null) return true
@@ -122,22 +117,86 @@ export function findMatchingEdge(
   )
 }
 
-/** 既存ノードの盤面を上書きする */
-export function updateNodeBoard(
-  graph: Graph,
-  nodeId: NodeId,
-  board: Board,
-): Graph {
-  return {
-    ...graph,
-    nodes: graph.nodes.map((n) => (n.id === nodeId ? { ...n, board } : n)),
+/** ルートから到達不能なノードとエッジを除去する */
+export function pruneUnreachable(graph: Graph): Graph {
+  const rootId = graph.nodes[0]?.id
+  if (!rootId) return graph
+
+  const reachable = new Set<NodeId>()
+  const queue: NodeId[] = [rootId]
+  reachable.add(rootId)
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const e of graph.edges) {
+      if (e.from === current && !reachable.has(e.to)) {
+        reachable.add(e.to)
+        queue.push(e.to)
+      }
+    }
   }
+
+  const prunedNodes = graph.nodes.filter((n) => reachable.has(n.id))
+  const prunedEdges = graph.edges.filter(
+    (e) => reachable.has(e.from) && reachable.has(e.to),
+  )
+
+  if (prunedNodes.length === graph.nodes.length) return graph
+  return { ...graph, nodes: prunedNodes, edges: prunedEdges }
 }
 
-/** ノードへの親エッジを取得する */
-export function getParentEdge(
+/** エッジの遷移先を差し替え、到達不能なノードを除去する */
+export function replaceEdgeTarget(
   graph: Graph,
-  nodeId: NodeId,
+  edgeId: EdgeId,
+  newTarget: NodeId,
+): Graph {
+  const updated = {
+    ...graph,
+    edges: graph.edges.map((e) =>
+      e.id === edgeId ? { ...e, to: newTarget } : e,
+    ),
+  }
+  return pruneUnreachable(updated)
+}
+
+/** ツモ制約が等しいか判定する */
+export function constraintsEqual(
+  a: TsumoConstraint | undefined,
+  b: TsumoConstraint | undefined,
+): boolean {
+  if (a == null && b == null) return true
+  if (a == null || b == null) return false
+  return (
+    pairsEqual(a.currentPair, b.currentPair) &&
+    pairsEqual(a.nextPair, b.nextPair)
+  )
+}
+
+/** 同じ盤面＋同じツモ制約を持つ既存ノードを検索する */
+export function findMergeableNode(
+  graph: Graph,
+  board: Board,
+  constraint?: TsumoConstraint,
+): GraphNode | undefined {
+  return graph.nodes.find(
+    (n) =>
+      boardsEqual(n.board, board) && constraintsEqual(n.constraint, constraint),
+  )
+}
+
+/** 同一親ノードから同じ遷移先ノードへの重複エッジを検索する */
+export function findDuplicateEdge(
+  graph: Graph,
+  fromNodeId: NodeId,
+  targetNodeId: NodeId,
+  next?: PuyoPair,
+  nextNext?: PuyoPair,
 ): GraphEdge | undefined {
-  return graph.edges.find((e) => e.to === nodeId)
+  return graph.edges.find(
+    (e) =>
+      e.from === fromNodeId &&
+      e.to === targetNodeId &&
+      pairsEqual(e.next, next) &&
+      pairsEqual(e.nextNext, nextNext),
+  )
 }

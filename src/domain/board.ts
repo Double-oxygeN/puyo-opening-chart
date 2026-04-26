@@ -36,6 +36,16 @@ export function setCell(
   )
 }
 
+/** 2つの盤面が等しいか判定する */
+export function boardsEqual(a: Board, b: Board): boolean {
+  for (let row = 0; row < BOARD_ROWS; row++) {
+    for (let col = 0; col < BOARD_COLS; col++) {
+      if (a[row][col] !== b[row][col]) return false
+    }
+  }
+  return true
+}
+
 /** 指定列の最も低い空きセルの段（行インデックス）を返す。満杯なら -1 */
 export function getDropRow(board: Board, col: number): number {
   for (let row = 0; row < BOARD_ROWS; row++) {

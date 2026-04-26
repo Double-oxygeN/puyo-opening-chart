@@ -1,10 +1,9 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { PuyoColor } from './domain/color'
 import type { PuyoPair, PairState } from './domain/pair'
 import { createInitialPairState } from './domain/pair'
 import { useGraph } from './hooks/useGraph'
 import type { NodeId } from './domain/graph'
-import { getParentEdge } from './domain/graph'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
 
@@ -25,16 +24,9 @@ function App() {
   const [nextNext, setNextNext] = useState<PuyoPair | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  // 親エッジの情報に基づく色確定ロジック
-  const parentEdge = useMemo(
-    () => getParentEdge(graph, selectedNodeId),
-    [graph, selectedNodeId],
-  )
-
-  // 親エッジにネクストが設定されている場合、ツモの色は確定
-  const lockedPair = parentEdge?.next ?? null
-  // 親エッジにネクネクが設定されている場合、ネクストの色は確定
-  const lockedNext = parentEdge?.nextNext ?? null
+  // ノードのツモ制約に基づく色確定ロジック
+  const lockedPair = selectedNode?.constraint?.currentPair ?? null
+  const lockedNext = selectedNode?.constraint?.nextPair ?? null
 
   const effectivePair = lockedPair ?? pair
   const effectiveNext = lockedNext ?? next
@@ -97,13 +89,14 @@ function App() {
     (nodeId: NodeId) => {
       selectNode(nodeId)
 
-      // ノード選択時に親エッジの情報を確認して色を設定
-      const edge = getParentEdge(graph, nodeId)
-      if (edge?.next) {
-        setPair(edge.next)
-        setPairState(createInitialPairState(edge.next))
-        if (edge.nextNext) {
-          setNext(edge.nextNext)
+      // ノード選択時に制約の情報を確認して色を設定
+      const node = graph.nodes.find((n) => n.id === nodeId)
+      const constraint = node?.constraint
+      if (constraint?.currentPair) {
+        setPair(constraint.currentPair)
+        setPairState(createInitialPairState(constraint.currentPair))
+        if (constraint.nextPair) {
+          setNext(constraint.nextPair)
         } else {
           setNext(null)
         }

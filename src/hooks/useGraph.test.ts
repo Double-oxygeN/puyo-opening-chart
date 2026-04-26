@@ -3,16 +3,16 @@ import { renderHook, act } from '@testing-library/react'
 import { useGraph } from './useGraph'
 import { PuyoColor } from '../domain/color'
 import { Rotation } from '../domain/pair'
-import type { PairState } from '../domain/pair'
+import type { PairState, PuyoPair } from '../domain/pair'
 import type { NodeId } from '../domain/graph'
 
 const RED_RED = { axis: PuyoColor.Red, child: PuyoColor.Red } as const
 const RED_BLUE = { axis: PuyoColor.Red, child: PuyoColor.Blue } as const
 
 function makePairState(
-  pair: typeof RED_RED | typeof RED_BLUE,
+  pair: PuyoPair,
   col = 2,
-  rotation = Rotation.Up,
+  rotation: Rotation = Rotation.Up,
 ): PairState {
   return { pair, col, rotation }
 }
@@ -112,7 +112,7 @@ describe('useGraph', () => {
     expect(result.current.selectedNodeId).toBe('node-2')
   })
 
-  it('overwrites existing node when edge matches (same pair/next/nextNext)', () => {
+  it('replaces edge target when edge matches (same pair/next/nextNext)', () => {
     const { result } = renderHook(() => useGraph())
     const next = { axis: PuyoColor.Green, child: PuyoColor.Green }
 
@@ -132,7 +132,7 @@ describe('useGraph', () => {
       result.current.selectNode('node-0' as NodeId)
     })
 
-    // Place same pair+next again (different column to get different board)
+    // Place same pair+next again (different column → different board)
     act(() => {
       result.current.placeAndAddNode(
         makePairState(RED_BLUE, 3, Rotation.Up),
@@ -140,11 +140,38 @@ describe('useGraph', () => {
       )
     })
 
-    // Should NOT create a new node; should overwrite existing
-    expect(result.current.graph.nodes).toHaveLength(2)
+    // Edge replaced: old node pruned, new node created
+    expect(result.current.graph.nodes).toHaveLength(2) // root + new node
     expect(result.current.graph.edges).toHaveLength(1)
-    // Should select the existing node
-    expect(result.current.selectedNodeId).toBe('node-1')
+    // New node has the updated board (RED_BLUE at col 3)
+    const newNode = result.current.selectedNode!
+    expect(newNode.board[0][3]).not.toBe(0) // col 3 has puyo
+  })
+
+  it('removes descendants when edge is replaced', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // Build chain: root → node-1 → node-2
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+    expect(result.current.graph.nodes).toHaveLength(3)
+    expect(result.current.graph.edges).toHaveLength(2)
+
+    // Go back to root and replace edge (same pair, different column)
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 3, Rotation.Up))
+    })
+
+    // Old node-1 and node-2 pruned, new node created
+    expect(result.current.graph.nodes).toHaveLength(2) // root + new node
+    expect(result.current.graph.edges).toHaveLength(1) // root→new node
   })
 
   it('creates new node when edge differs in next', () => {
@@ -195,5 +222,100 @@ describe('useGraph', () => {
       (e) => e.to === ('node-2' as NodeId),
     )
     expect(latestEdge?.from).toBe('node-0')
+  })
+
+  it('auto-merges nodes with same board and same constraint', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // Path 1: root → place RED_BLUE at col 0
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+    // node-1: board has Red at (0,0), Blue at (1,0)
+
+    // Continue path 1: place RED_RED at col 1
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+    // node-2: board has Red at (0,0), Blue at (1,0), Red at (0,1), Red at (1,1)
+
+    // Go back to root
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+
+    // Path 2: root → place RED_RED at col 1
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+    // node-3: board has Red at (0,1), Red at (1,1)
+
+    // Continue path 2: place RED_BLUE at col 0 → same board as node-2
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+
+    // Should have merged with node-2 (same board, no constraint)
+    expect(result.current.selectedNodeId).toBe('node-2')
+    // root + node-1 + node-2 + node-3 = 4 nodes (not 5)
+    expect(result.current.graph.nodes).toHaveLength(4)
+    // root→node-1, node-1→node-2, root→node-3, node-3→node-2 = 4 edges
+    expect(result.current.graph.edges).toHaveLength(4)
+  })
+
+  it('does not merge nodes with same board but different constraints', () => {
+    const { result } = renderHook(() => useGraph())
+    const next1 = { axis: PuyoColor.Green, child: PuyoColor.Green }
+    const next2 = { axis: PuyoColor.Blue, child: PuyoColor.Blue }
+
+    // Path 1: place with next1
+    act(() => {
+      result.current.placeAndAddNode(
+        makePairState(RED_BLUE, 0, Rotation.Up),
+        next1,
+      )
+    })
+
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+
+    // Path 2: same placement but with next2 → different constraint
+    act(() => {
+      result.current.placeAndAddNode(
+        makePairState(RED_BLUE, 0, Rotation.Up),
+        next2,
+      )
+    })
+
+    // Should NOT merge: different constraints → separate nodes
+    expect(result.current.graph.nodes).toHaveLength(3)
+    expect(result.current.graph.edges).toHaveLength(2)
+  })
+
+  it('skips duplicate edge from same parent to same merged node (axis/child swapped)', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // Place RED_BLUE at col 0 horizontally (axis=Red@col0, child=Blue@col1)
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Right))
+    })
+    expect(result.current.graph.nodes).toHaveLength(2)
+
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+
+    // Place BLUE_RED at col 1 horizontally with child left
+    // axis=Blue@col1, child=Red@col0 → same board as above
+    const BLUE_RED = { axis: PuyoColor.Blue, child: PuyoColor.Red } as const
+    act(() => {
+      result.current.placeAndAddNode(makePairState(BLUE_RED, 1, Rotation.Left))
+    })
+
+    // Should reuse node-1 AND skip the duplicate edge
+    expect(result.current.selectedNodeId).toBe('node-1')
+    expect(result.current.graph.nodes).toHaveLength(2)
+    expect(result.current.graph.edges).toHaveLength(1)
   })
 })

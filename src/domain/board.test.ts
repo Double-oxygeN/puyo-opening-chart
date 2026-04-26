@@ -4,6 +4,7 @@ import {
   getDropRow,
   getCell,
   setCell,
+  boardsEqual,
   BOARD_COLS,
   BOARD_ROWS,
 } from './board'
@@ -64,5 +65,29 @@ describe('getDropRow', () => {
       board = setCell(board, row, 0, PuyoColor.Green)
     }
     expect(getDropRow(board, 0)).toBe(-1)
+  })
+})
+
+describe('boardsEqual', () => {
+  it('returns true for two empty boards', () => {
+    expect(boardsEqual(createEmptyBoard(), createEmptyBoard())).toBe(true)
+  })
+
+  it('returns true for identical non-empty boards', () => {
+    const a = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const b = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    expect(boardsEqual(a, b)).toBe(true)
+  })
+
+  it('returns false when cells differ', () => {
+    const a = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const b = setCell(createEmptyBoard(), 0, 0, PuyoColor.Blue)
+    expect(boardsEqual(a, b)).toBe(false)
+  })
+
+  it('returns false when one board has an extra puyo', () => {
+    const a = createEmptyBoard()
+    const b = setCell(createEmptyBoard(), 0, 0, PuyoColor.Green)
+    expect(boardsEqual(a, b)).toBe(false)
   })
 })

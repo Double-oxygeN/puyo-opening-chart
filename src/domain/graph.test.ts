@@ -3,12 +3,12 @@ import {
   createInitialGraph,
   addNode,
   addEdge,
-  getChildEdges,
-  getChildNodes,
-  getRootNode,
   findMatchingEdge,
-  updateNodeBoard,
-  getParentEdge,
+  replaceEdgeTarget,
+  pruneUnreachable,
+  constraintsEqual,
+  findMergeableNode,
+  findDuplicateEdge,
 } from './graph'
 import type { NodeId } from './graph'
 import { createEmptyBoard, setCell } from './board'
@@ -50,33 +50,6 @@ describe('addEdge', () => {
     expect(graph.edges[0].from).toBe('node-0')
     expect(graph.edges[0].to).toBe(node.id)
     expect(graph.edges[0].pair).toEqual(pair)
-  })
-})
-
-describe('getChildEdges / getChildNodes', () => {
-  it('returns children of a node', () => {
-    let graph = createInitialGraph()
-    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
-    const board2 = setCell(createEmptyBoard(), 0, 1, PuyoColor.Green)
-
-    const [g1, node1] = addNode(graph, board1)
-    const [g2, node2] = addNode(g1, board2)
-    graph = g2
-
-    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, node1.id, pair)
-    graph = addEdge(graph, 'node-0' as NodeId, node2.id, pair)
-
-    expect(getChildEdges(graph, 'node-0' as NodeId)).toHaveLength(2)
-    expect(getChildNodes(graph, 'node-0' as NodeId)).toHaveLength(2)
-    expect(getChildEdges(graph, node1.id)).toHaveLength(0)
-  })
-})
-
-describe('getRootNode', () => {
-  it('returns the first node', () => {
-    const graph = createInitialGraph()
-    expect(getRootNode(graph)?.id).toBe('node-0')
   })
 })
 
@@ -165,23 +138,206 @@ describe('findMatchingEdge', () => {
   })
 })
 
-describe('updateNodeBoard', () => {
-  it('updates the board of a specific node', () => {
+describe('replaceEdgeTarget', () => {
+  it('redirects an edge to a new target node', () => {
     let graph = createInitialGraph()
-    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
-    const [graph2, node] = addNode(graph, board1)
-    graph = graph2
+    const boardA = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const boardB = setCell(createEmptyBoard(), 0, 1, PuyoColor.Green)
 
-    const board2 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Green)
-    graph = updateNodeBoard(graph, node.id, board2)
+    const [g1, nodeA] = addNode(graph, boardA)
+    const [g2, nodeB] = addNode(g1, boardB)
+    graph = g2
 
-    const updated = graph.nodes.find((n) => n.id === node.id)
-    expect(updated?.board[0][0]).toBe(PuyoColor.Green)
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair)
+
+    const edgeId = graph.edges[0].id
+    graph = replaceEdgeTarget(graph, edgeId, nodeB.id)
+
+    expect(graph.edges[0].to).toBe(nodeB.id)
+    // nodeA is now unreachable → pruned
+    expect(graph.nodes.find((n) => n.id === nodeA.id)).toBeUndefined()
+    expect(graph.nodes).toHaveLength(2) // root + B
+  })
+
+  it('prunes unreachable descendants when edge is redirected', () => {
+    // root → A → B, redirect root→A to root→C
+    let graph = createInitialGraph()
+    const boardA = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const boardB = setCell(createEmptyBoard(), 0, 1, PuyoColor.Green)
+    const boardC = setCell(createEmptyBoard(), 0, 2, PuyoColor.Blue)
+
+    const [g1, nodeA] = addNode(graph, boardA)
+    const [g2, nodeB] = addNode(g1, boardB)
+    const [g3, nodeC] = addNode(g2, boardC)
+    graph = g3
+
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair)
+    graph = addEdge(graph, nodeA.id, nodeB.id, pair)
+
+    const edgeId = graph.edges[0].id
+    graph = replaceEdgeTarget(graph, edgeId, nodeC.id)
+
+    // A and B are unreachable → pruned
+    expect(graph.nodes).toHaveLength(2) // root + C
+    expect(graph.edges).toHaveLength(1) // root→C
+    expect(graph.nodes.find((n) => n.id === nodeA.id)).toBeUndefined()
+    expect(graph.nodes.find((n) => n.id === nodeB.id)).toBeUndefined()
+  })
+
+  it('preserves nodes reachable via other paths', () => {
+    // root → A → C, root → B → C (DAG), redirect root→A to root→D
+    let graph = createInitialGraph()
+    const boardA = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const boardB = setCell(createEmptyBoard(), 0, 1, PuyoColor.Green)
+    const boardC = setCell(createEmptyBoard(), 0, 2, PuyoColor.Blue)
+    const boardD = setCell(createEmptyBoard(), 0, 3, PuyoColor.Yellow)
+
+    const [g1, nodeA] = addNode(graph, boardA)
+    const [g2, nodeB] = addNode(g1, boardB)
+    const [g3, nodeC] = addNode(g2, boardC)
+    const [g4, nodeD] = addNode(g3, boardD)
+    graph = g4
+
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, nodeB.id, pair)
+    graph = addEdge(graph, nodeA.id, nodeC.id, pair)
+    graph = addEdge(graph, nodeB.id, nodeC.id, pair)
+
+    // Redirect root→A to root→D; A becomes unreachable but C remains via B
+    const rootToAEdge = graph.edges.find(
+      (e) => e.from === ('node-0' as NodeId) && e.to === nodeA.id,
+    )!
+    graph = replaceEdgeTarget(graph, rootToAEdge.id, nodeD.id)
+
+    expect(graph.nodes).toHaveLength(4) // root + B + C + D (A pruned)
+    expect(graph.nodes.find((n) => n.id === nodeA.id)).toBeUndefined()
+    expect(graph.nodes.find((n) => n.id === nodeC.id)).toBeDefined()
   })
 })
 
-describe('getParentEdge', () => {
-  it('returns the edge pointing to a node', () => {
+describe('pruneUnreachable', () => {
+  it('removes orphaned nodes', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1] = addNode(graph, board) // node-1 with no edges
+    graph = g1
+
+    expect(graph.nodes).toHaveLength(2)
+    graph = pruneUnreachable(graph)
+    expect(graph.nodes).toHaveLength(1) // only root
+  })
+
+  it('returns same graph when nothing to prune', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    graph = addEdge(g1, 'node-0' as NodeId, node.id, {
+      axis: PuyoColor.Red,
+      child: PuyoColor.Blue,
+    })
+
+    const pruned = pruneUnreachable(graph)
+    expect(pruned).toBe(graph) // referential equality (no-op)
+  })
+})
+
+describe('constraintsEqual', () => {
+  it('returns true for both undefined', () => {
+    expect(constraintsEqual(undefined, undefined)).toBe(true)
+  })
+
+  it('returns false when one is undefined', () => {
+    const c = { currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue } }
+    expect(constraintsEqual(c, undefined)).toBe(false)
+    expect(constraintsEqual(undefined, c)).toBe(false)
+  })
+
+  it('returns true for matching constraints', () => {
+    const a = {
+      currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      nextPair: { axis: PuyoColor.Green, child: PuyoColor.Yellow },
+    }
+    const b = {
+      currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      nextPair: { axis: PuyoColor.Green, child: PuyoColor.Yellow },
+    }
+    expect(constraintsEqual(a, b)).toBe(true)
+  })
+
+  it('returns false when currentPair differs', () => {
+    const a = { currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue } }
+    const b = { currentPair: { axis: PuyoColor.Green, child: PuyoColor.Blue } }
+    expect(constraintsEqual(a, b)).toBe(false)
+  })
+
+  it('returns false when nextPair differs', () => {
+    const a = {
+      currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      nextPair: { axis: PuyoColor.Green, child: PuyoColor.Yellow },
+    }
+    const b = {
+      currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      nextPair: { axis: PuyoColor.Blue, child: PuyoColor.Yellow },
+    }
+    expect(constraintsEqual(a, b)).toBe(false)
+  })
+})
+
+describe('findMergeableNode', () => {
+  it('finds a node with the same board and constraint', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const constraint = {
+      currentPair: { axis: PuyoColor.Green, child: PuyoColor.Blue },
+    }
+    const [graph2, node] = addNode(graph, board, constraint)
+    graph = graph2
+
+    const found = findMergeableNode(graph, board, constraint)
+    expect(found?.id).toBe(node.id)
+  })
+
+  it('returns undefined when board differs', () => {
+    let graph = createInitialGraph()
+    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const board2 = setCell(createEmptyBoard(), 0, 1, PuyoColor.Red)
+    const [graph2] = addNode(graph, board1)
+    graph = graph2
+
+    expect(findMergeableNode(graph, board2)).toBeUndefined()
+  })
+
+  it('returns undefined when constraint differs', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const c1 = {
+      currentPair: { axis: PuyoColor.Green, child: PuyoColor.Blue },
+    }
+    const c2 = {
+      currentPair: { axis: PuyoColor.Red, child: PuyoColor.Blue },
+    }
+    const [graph2] = addNode(graph, board, c1)
+    graph = graph2
+
+    expect(findMergeableNode(graph, board, c2)).toBeUndefined()
+  })
+
+  it('matches nodes without constraints', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [graph2, node] = addNode(graph, board)
+    graph = graph2
+
+    const found = findMergeableNode(graph, board)
+    expect(found?.id).toBe(node.id)
+  })
+})
+
+describe('findDuplicateEdge', () => {
+  it('finds duplicate edge to the same target node', () => {
     let graph = createInitialGraph()
     const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
     const [graph2, node] = addNode(graph, board)
@@ -190,12 +346,47 @@ describe('getParentEdge', () => {
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
     graph = addEdge(graph, 'node-0' as NodeId, node.id, pair)
 
-    const parent = getParentEdge(graph, node.id)
-    expect(parent?.from).toBe('node-0')
+    const found = findDuplicateEdge(graph, 'node-0' as NodeId, node.id)
+    expect(found).toBeDefined()
   })
 
-  it('returns undefined for root node', () => {
-    const graph = createInitialGraph()
-    expect(getParentEdge(graph, 'node-0' as NodeId)).toBeUndefined()
+  it('returns undefined for different target', () => {
+    let graph = createInitialGraph()
+    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const board2 = setCell(createEmptyBoard(), 0, 1, PuyoColor.Blue)
+    const [g1, node1] = addNode(graph, board1)
+    const [g2] = addNode(g1, board2)
+    graph = g2
+
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    graph = addEdge(graph, 'node-0' as NodeId, node1.id, pair)
+
+    const found = findDuplicateEdge(
+      graph,
+      'node-0' as NodeId,
+      'node-2' as NodeId,
+    )
+    expect(found).toBeUndefined()
+  })
+
+  it('returns undefined when next differs', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [graph2, node] = addNode(graph, board)
+    graph = graph2
+
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
+    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, next)
+
+    // 異なる next で検索
+    const differentNext = { axis: PuyoColor.Blue, child: PuyoColor.Red }
+    const found = findDuplicateEdge(
+      graph,
+      'node-0' as NodeId,
+      node.id,
+      differentNext,
+    )
+    expect(found).toBeUndefined()
   })
 })
