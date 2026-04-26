@@ -8,6 +8,8 @@ import {
   findMergeableNode,
   findDuplicateEdge,
   replaceEdgeTarget,
+  removeNode,
+  findParentNodeId,
   updateNodeMemo,
   validateGraph,
 } from '../domain/graph'
@@ -31,6 +33,7 @@ type GraphAction =
       nextNext?: PuyoPair
     }
   | { type: 'updateMemo'; nodeId: NodeId; memo: string }
+  | { type: 'deleteNode'; nodeId: NodeId }
   | { type: 'resetGraph' }
   | { type: 'hydrateGraph'; graph: Graph }
   | { type: 'importGraph'; graph: Graph }
@@ -177,6 +180,18 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         graph: updateNodeMemo(state.graph, action.nodeId, action.memo),
       }
 
+    case 'deleteNode': {
+      const rootId = state.graph.nodes[0]?.id
+      if (!rootId || action.nodeId === rootId) return state
+      const parentId = findParentNodeId(state.graph, action.nodeId) ?? rootId
+      const newGraph = removeNode(state.graph, action.nodeId)
+      return {
+        ...state,
+        graph: newGraph,
+        selectedNodeId: parentId,
+      }
+    }
+
     case 'resetGraph': {
       clearGraph()
       return createInitialState(true)
@@ -214,6 +229,7 @@ interface UseGraphReturn {
     nextNext?: PuyoPair,
   ) => boolean
   updateMemo: (nodeId: NodeId, memo: string) => void
+  deleteNode: (nodeId: NodeId) => void
   resetGraph: () => void
   importGraph: (graph: Graph) => void
   loading: boolean
@@ -250,6 +266,10 @@ export function useGraph(): UseGraphReturn {
 
   const updateMemo = useCallback((nodeId: NodeId, memo: string) => {
     dispatch({ type: 'updateMemo', nodeId, memo })
+  }, [])
+
+  const deleteNode = useCallback((nodeId: NodeId) => {
+    dispatch({ type: 'deleteNode', nodeId })
   }, [])
 
   const resetGraph = useCallback(() => {
@@ -306,6 +326,7 @@ export function useGraph(): UseGraphReturn {
     selectNode,
     placeAndAddNode,
     updateMemo,
+    deleteNode,
     resetGraph,
     importGraph,
     loading: !state.hydrated,

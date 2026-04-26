@@ -404,4 +404,32 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(1)
     expect(result.current.selectedNodeId).toBe(importedGraph.nodes[0].id)
   })
+
+  it('deleteNode removes a node and selects parent', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // Place a node
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+    expect(result.current.selectedNodeId).toBe('node-1')
+    expect(result.current.graph.nodes).toHaveLength(2)
+
+    // Delete it
+    act(() => {
+      result.current.deleteNode('node-1' as NodeId)
+    })
+    expect(result.current.graph.nodes).toHaveLength(1)
+    expect(result.current.selectedNodeId).toBe('node-0')
+  })
+
+  it('deleteNode does nothing for root node', () => {
+    const { result } = renderHook(() => useGraph())
+
+    act(() => {
+      result.current.deleteNode('node-0' as NodeId)
+    })
+    expect(result.current.graph.nodes).toHaveLength(1)
+    expect(result.current.selectedNodeId).toBe('node-0')
+  })
 })

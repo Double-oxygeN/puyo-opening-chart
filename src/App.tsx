@@ -22,6 +22,7 @@ function App() {
     selectNode,
     placeAndAddNode,
     updateMemo,
+    deleteNode,
     resetGraph,
     importGraph,
     loading,
@@ -143,6 +144,11 @@ function App() {
     }
   }, [resetGraph])
 
+  const handleDeleteNode = useCallback(() => {
+    deleteNode(selectedNodeId)
+    setIsDialogOpen(false)
+  }, [deleteNode, selectedNodeId])
+
   const handleExport = useCallback(() => {
     exportGraphToFile(graph)
   }, [graph])
@@ -223,6 +229,9 @@ function App() {
           nextEditable={lockedNext === null}
           memo={selectedNode?.memo ?? ''}
           onSaveMemo={handleSaveMemo}
+          onDeleteNode={
+            selectedNodeId !== graph.nodes[0]?.id ? handleDeleteNode : undefined
+          }
         />
       )}
     </div>

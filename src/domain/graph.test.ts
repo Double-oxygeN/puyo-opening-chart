@@ -6,6 +6,8 @@ import {
   findMatchingEdge,
   replaceEdgeTarget,
   pruneUnreachable,
+  removeNode,
+  findParentNodeId,
   constraintsEqual,
   findMergeableNode,
   findDuplicateEdge,
@@ -279,6 +281,137 @@ describe('pruneUnreachable', () => {
 
     const pruned = pruneUnreachable(graph)
     expect(pruned).toBe(graph) // referential equality (no-op)
+  })
+})
+
+describe('removeNode', () => {
+  it('does nothing when removing root node', () => {
+    const graph = createInitialGraph()
+    const result = removeNode(graph, 'node-0' as NodeId)
+    expect(result).toBe(graph)
+  })
+
+  it('removes a leaf node and its edge', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+
+    const result = removeNode(graph, node.id)
+    expect(result.nodes).toHaveLength(1)
+    expect(result.edges).toHaveLength(0)
+  })
+
+  it('removes a middle node and prunes unreachable descendants', () => {
+    let graph = createInitialGraph()
+    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const board2 = setCell(createEmptyBoard(), 0, 1, PuyoColor.Blue)
+    const [g1, node1] = addNode(graph, board1)
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node1.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+    const [g2, node2] = addNode(graph, board2)
+    graph = addEdge(
+      g2,
+      node1.id,
+      node2.id,
+      { axis: PuyoColor.Blue, child: PuyoColor.Red },
+      3,
+      Rotation.Up,
+    )
+
+    // root -> node1 -> node2; removing node1 should also prune node2
+    const result = removeNode(graph, node1.id)
+    expect(result.nodes).toHaveLength(1)
+    expect(result.edges).toHaveLength(0)
+  })
+
+  it('keeps child node if reachable from another parent', () => {
+    let graph = createInitialGraph()
+    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const board2 = setCell(createEmptyBoard(), 0, 1, PuyoColor.Blue)
+    const boardShared = setCell(createEmptyBoard(), 0, 2, PuyoColor.Green)
+    const [g1, node1] = addNode(graph, board1)
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node1.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+    const [g2, node2] = addNode(graph, board2)
+    graph = addEdge(
+      g2,
+      'node-0' as NodeId,
+      node2.id,
+      { axis: PuyoColor.Blue, child: PuyoColor.Red },
+      3,
+      Rotation.Up,
+    )
+    const [g3, sharedNode] = addNode(graph, boardShared)
+    graph = addEdge(
+      g3,
+      node1.id,
+      sharedNode.id,
+      { axis: PuyoColor.Green, child: PuyoColor.Red },
+      0,
+      Rotation.Up,
+    )
+    graph = addEdge(
+      graph,
+      node2.id,
+      sharedNode.id,
+      { axis: PuyoColor.Green, child: PuyoColor.Blue },
+      1,
+      Rotation.Up,
+    )
+
+    // root -> node1 -> sharedNode, root -> node2 -> sharedNode
+    // removing node1 should keep sharedNode (reachable via node2)
+    const result = removeNode(graph, node1.id)
+    expect(result.nodes).toHaveLength(3) // root, node2, sharedNode
+    expect(result.nodes.map((n) => n.id)).toContain(sharedNode.id)
+  })
+
+  it('does nothing for non-existent node', () => {
+    const graph = createInitialGraph()
+    const result = removeNode(graph, 'node-999' as NodeId)
+    expect(result).toBe(graph)
+  })
+})
+
+describe('findParentNodeId', () => {
+  it('returns undefined for root node', () => {
+    const graph = createInitialGraph()
+    expect(findParentNodeId(graph, 'node-0' as NodeId)).toBeUndefined()
+  })
+
+  it('returns parent node id', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+    expect(findParentNodeId(graph, node.id)).toBe('node-0')
   })
 })
 

@@ -27,6 +27,8 @@ interface BoardOperationDialogProps {
   /** ノードのメモ */
   memo: string
   onSaveMemo: (memo: string) => void
+  /** ノード削除コールバック（ルートノードの場合は undefined） */
+  onDeleteNode?: () => void
 }
 
 export default function BoardOperationDialog({
@@ -46,6 +48,7 @@ export default function BoardOperationDialog({
   nextEditable,
   memo,
   onSaveMemo,
+  onDeleteNode,
 }: BoardOperationDialogProps) {
   const [draftMemo, setDraftMemo] = useState(memo)
   const isDirty = draftMemo !== memo
@@ -124,6 +127,27 @@ export default function BoardOperationDialog({
             </button>
           </div>
         </div>
+
+        {/* ノード削除 */}
+        {onDeleteNode && (
+          <div className="flex justify-end border-t border-gray-200 pt-3">
+            <button
+              type="button"
+              className="px-3 py-1 text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 transition-colors"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'このノードを削除しますか？子孫ノードも削除されます。',
+                  )
+                ) {
+                  onDeleteNode()
+                }
+              }}
+            >
+              ノードを削除
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

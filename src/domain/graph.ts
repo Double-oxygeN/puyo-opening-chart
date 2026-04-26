@@ -198,6 +198,29 @@ export function findMergeableNode(
   )
 }
 
+/** 指定ノードを削除し、到達不能になったノード・エッジも除去する。ルートノードは削除不可 */
+export function removeNode(graph: Graph, nodeId: NodeId): Graph {
+  const rootId = graph.nodes[0]?.id
+  if (!rootId || nodeId === rootId) return graph
+  if (!graph.nodes.some((n) => n.id === nodeId)) return graph
+
+  const filtered = {
+    ...graph,
+    nodes: graph.nodes.filter((n) => n.id !== nodeId),
+    edges: graph.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
+  }
+  return pruneUnreachable(filtered)
+}
+
+/** 指定ノードの親ノードIDを返す（最初に見つかったもの） */
+export function findParentNodeId(
+  graph: Graph,
+  nodeId: NodeId,
+): NodeId | undefined {
+  const edge = graph.edges.find((e) => e.to === nodeId)
+  return edge?.from
+}
+
 /** ノードのメモを更新する */
 export function updateNodeMemo(
   graph: Graph,
