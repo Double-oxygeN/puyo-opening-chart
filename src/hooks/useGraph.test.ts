@@ -318,4 +318,62 @@ describe('useGraph', () => {
     expect(result.current.graph.nodes).toHaveLength(2)
     expect(result.current.graph.edges).toHaveLength(1)
   })
+
+  it('preserves memo on existing node when auto-merged', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // Path 1: root → RED_BLUE at col 0 → RED_RED at col 1
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+    // node-2 にメモを付与
+    act(() => {
+      result.current.updateMemo('node-2' as NodeId, '重要なメモ')
+    })
+
+    // Path 2: root → RED_RED at col 1 → RED_BLUE at col 0 → node-2 に統合
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+
+    // 統合先の node-2 が選択され、メモが保持されている
+    expect(result.current.selectedNodeId).toBe('node-2')
+    const mergedNode = result.current.graph.nodes.find(
+      (n) => n.id === ('node-2' as NodeId),
+    )
+    expect(mergedNode?.memo).toBe('重要なメモ')
+  })
+
+  it('updates memo on a node', () => {
+    const { result } = renderHook(() => useGraph())
+
+    act(() => {
+      result.current.updateMemo('node-0' as NodeId, 'テストメモ')
+    })
+
+    expect(result.current.selectedNode?.memo).toBe('テストメモ')
+  })
+
+  it('clears memo when set to empty string', () => {
+    const { result } = renderHook(() => useGraph())
+
+    act(() => {
+      result.current.updateMemo('node-0' as NodeId, 'メモ')
+    })
+    expect(result.current.selectedNode?.memo).toBe('メモ')
+
+    act(() => {
+      result.current.updateMemo('node-0' as NodeId, '')
+    })
+    expect(result.current.selectedNode?.memo).toBeUndefined()
+  })
 })

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Board } from '../domain/board'
 import type { PuyoPair, PairState } from '../domain/pair'
 import BoardView from './BoardView'
@@ -23,6 +24,9 @@ interface BoardOperationDialogProps {
   pairEditable: boolean
   /** ネクストの編集が可能か */
   nextEditable: boolean
+  /** ノードのメモ */
+  memo: string
+  onSaveMemo: (memo: string) => void
 }
 
 export default function BoardOperationDialog({
@@ -40,7 +44,19 @@ export default function BoardOperationDialog({
   onClearNextNext,
   pairEditable,
   nextEditable,
+  memo,
+  onSaveMemo,
 }: BoardOperationDialogProps) {
+  const [draftMemo, setDraftMemo] = useState(memo)
+  const isDirty = draftMemo !== memo
+
+  // 外部から memo が変わったら（ノード切替時など）ドラフトをリセット
+  const [prevMemo, setPrevMemo] = useState(memo)
+  if (memo !== prevMemo) {
+    setPrevMemo(memo)
+    setDraftMemo(memo)
+  }
+
   return (
     <div className="fixed top-0 right-0 bottom-0 z-50 pointer-events-none flex items-start justify-end p-6 pt-20">
       <div
@@ -86,6 +102,28 @@ export default function BoardOperationDialog({
           onUpdatePairState={onUpdatePairState}
           onPlace={onPlace}
         />
+
+        {/* メモ */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-500">メモ</label>
+          <textarea
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            rows={3}
+            placeholder="メモを入力..."
+            value={draftMemo}
+            onChange={(e) => setDraftMemo(e.target.value)}
+          />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="px-3 py-1 text-xs font-medium rounded-md text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              disabled={!isDirty}
+              onClick={() => onSaveMemo(draftMemo)}
+            >
+              保存
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

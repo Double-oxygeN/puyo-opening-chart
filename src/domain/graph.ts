@@ -19,6 +19,7 @@ export interface GraphNode {
   readonly id: NodeId
   readonly board: Board
   readonly constraint?: TsumoConstraint
+  readonly memo?: string
 }
 
 /** グラフのエッジ: 組ぷよの配置による遷移 */
@@ -182,6 +183,23 @@ export function findMergeableNode(
     (n) =>
       boardsEqual(n.board, board) && constraintsEqual(n.constraint, constraint),
   )
+}
+
+/** ノードのメモを更新する */
+export function updateNodeMemo(
+  graph: Graph,
+  nodeId: NodeId,
+  memo: string,
+): Graph {
+  const normalizedMemo = memo || undefined
+  const nodeExists = graph.nodes.some((n) => n.id === nodeId)
+  if (!nodeExists) return graph
+  return {
+    ...graph,
+    nodes: graph.nodes.map((n) =>
+      n.id === nodeId ? { ...n, memo: normalizedMemo } : n,
+    ),
+  }
 }
 
 /** 同一親ノードから同じ遷移先ノードへの重複エッジを検索する */

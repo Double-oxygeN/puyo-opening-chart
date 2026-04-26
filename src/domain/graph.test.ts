@@ -9,6 +9,7 @@ import {
   constraintsEqual,
   findMergeableNode,
   findDuplicateEdge,
+  updateNodeMemo,
 } from './graph'
 import type { NodeId } from './graph'
 import { createEmptyBoard, setCell } from './board'
@@ -388,5 +389,32 @@ describe('findDuplicateEdge', () => {
       differentNext,
     )
     expect(found).toBeUndefined()
+  })
+})
+
+describe('updateNodeMemo', () => {
+  it('updates memo on an existing node', () => {
+    const graph = createInitialGraph()
+    const updated = updateNodeMemo(graph, 'node-0' as NodeId, 'テストメモ')
+    expect(updated.nodes[0].memo).toBe('テストメモ')
+  })
+
+  it('returns the same graph when node does not exist', () => {
+    const graph = createInitialGraph()
+    const updated = updateNodeMemo(
+      graph,
+      'non-existent' as NodeId,
+      'テストメモ',
+    )
+    expect(updated).toBe(graph)
+  })
+
+  it('clears memo when given an empty string', () => {
+    let graph = createInitialGraph()
+    graph = updateNodeMemo(graph, 'node-0' as NodeId, 'メモ')
+    expect(graph.nodes[0].memo).toBe('メモ')
+
+    graph = updateNodeMemo(graph, 'node-0' as NodeId, '')
+    expect(graph.nodes[0].memo).toBeUndefined()
   })
 })

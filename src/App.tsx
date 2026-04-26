@@ -13,8 +13,14 @@ const DEFAULT_PAIR: PuyoPair = {
 }
 
 function App() {
-  const { graph, selectedNode, selectedNodeId, selectNode, placeAndAddNode } =
-    useGraph()
+  const {
+    graph,
+    selectedNode,
+    selectedNodeId,
+    selectNode,
+    placeAndAddNode,
+    updateMemo,
+  } = useGraph()
 
   const [pair, setPair] = useState<PuyoPair>(DEFAULT_PAIR)
   const [pairState, setPairState] = useState<PairState>(
@@ -114,6 +120,13 @@ function App() {
     setIsDialogOpen(false)
   }, [])
 
+  const handleSaveMemo = useCallback(
+    (memo: string) => {
+      updateMemo(selectedNodeId, memo)
+    },
+    [updateMemo, selectedNodeId],
+  )
+
   const currentBoard = selectedNode?.board
 
   return (
@@ -154,6 +167,8 @@ function App() {
           onClearNextNext={handleClearNextNext}
           pairEditable={lockedPair === null}
           nextEditable={lockedNext === null}
+          memo={selectedNode?.memo ?? ''}
+          onSaveMemo={handleSaveMemo}
         />
       )}
     </div>

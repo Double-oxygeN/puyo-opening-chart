@@ -8,6 +8,7 @@ import {
   findMergeableNode,
   findDuplicateEdge,
   replaceEdgeTarget,
+  updateNodeMemo,
 } from '../domain/graph'
 import { placePair } from '../domain/pair'
 import type { PairState, PuyoPair } from '../domain/pair'
@@ -25,6 +26,7 @@ type GraphAction =
       next?: PuyoPair
       nextNext?: PuyoPair
     }
+  | { type: 'updateMemo'; nodeId: NodeId; memo: string }
 
 function graphReducer(state: GraphState, action: GraphAction): GraphState {
   switch (action.type) {
@@ -149,6 +151,12 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
 
       return { graph: graphWithEdge, selectedNodeId: newNode.id }
     }
+
+    case 'updateMemo':
+      return {
+        ...state,
+        graph: updateNodeMemo(state.graph, action.nodeId, action.memo),
+      }
   }
 }
 
@@ -167,6 +175,7 @@ interface UseGraphReturn {
     next?: PuyoPair,
     nextNext?: PuyoPair,
   ) => boolean
+  updateMemo: (nodeId: NodeId, memo: string) => void
 }
 
 export function useGraph(): UseGraphReturn {
@@ -198,11 +207,16 @@ export function useGraph(): UseGraphReturn {
     [state],
   )
 
+  const updateMemo = useCallback((nodeId: NodeId, memo: string) => {
+    dispatch({ type: 'updateMemo', nodeId, memo })
+  }, [])
+
   return {
     graph: state.graph,
     selectedNode,
     selectedNodeId: state.selectedNodeId,
     selectNode,
     placeAndAddNode,
+    updateMemo,
   }
 }
