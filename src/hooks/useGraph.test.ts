@@ -376,4 +376,32 @@ describe('useGraph', () => {
     })
     expect(result.current.selectedNode?.memo).toBeUndefined()
   })
+
+  it('importGraph replaces the graph and selects root node', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // 既存グラフに操作を加える
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+    expect(result.current.graph.nodes).toHaveLength(2)
+
+    // インポート用のグラフを作成（別のグラフ状態）
+    const importedGraph = { ...result.current.graph }
+
+    // リセットしてからインポート
+    act(() => {
+      result.current.resetGraph()
+    })
+    expect(result.current.graph.nodes).toHaveLength(1)
+
+    // グラフをインポート
+    act(() => {
+      result.current.importGraph(importedGraph)
+    })
+
+    expect(result.current.graph.nodes).toHaveLength(2)
+    expect(result.current.graph.edges).toHaveLength(1)
+    expect(result.current.selectedNodeId).toBe(importedGraph.nodes[0].id)
+  })
 })

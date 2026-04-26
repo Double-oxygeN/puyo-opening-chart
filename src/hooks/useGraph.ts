@@ -33,6 +33,7 @@ type GraphAction =
   | { type: 'updateMemo'; nodeId: NodeId; memo: string }
   | { type: 'resetGraph' }
   | { type: 'hydrateGraph'; graph: Graph }
+  | { type: 'importGraph'; graph: Graph }
 
 function graphReducer(state: GraphState, action: GraphAction): GraphState {
   switch (action.type) {
@@ -187,6 +188,13 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         selectedNodeId: action.graph.nodes[0].id,
         hydrated: true,
       }
+
+    case 'importGraph':
+      return {
+        graph: action.graph,
+        selectedNodeId: action.graph.nodes[0].id,
+        hydrated: true,
+      }
   }
 }
 
@@ -207,6 +215,7 @@ interface UseGraphReturn {
   ) => boolean
   updateMemo: (nodeId: NodeId, memo: string) => void
   resetGraph: () => void
+  importGraph: (graph: Graph) => void
   loading: boolean
 }
 
@@ -245,6 +254,10 @@ export function useGraph(): UseGraphReturn {
 
   const resetGraph = useCallback(() => {
     dispatch({ type: 'resetGraph' })
+  }, [])
+
+  const importGraph = useCallback((graph: Graph) => {
+    dispatch({ type: 'importGraph', graph })
   }, [])
 
   // 初回マウント時に localStorage から非同期読み込み・検証
@@ -294,6 +307,7 @@ export function useGraph(): UseGraphReturn {
     placeAndAddNode,
     updateMemo,
     resetGraph,
+    importGraph,
     loading: !state.hydrated,
   }
 }

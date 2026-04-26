@@ -3,9 +3,11 @@ import { PuyoColor } from './domain/color'
 import type { PuyoPair, PairState } from './domain/pair'
 import { createInitialPairState } from './domain/pair'
 import { useGraph } from './hooks/useGraph'
+import { exportGraphToFile, importGraphFromFile } from './hooks/useGraphStorage'
 import type { NodeId } from './domain/graph'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
+import HeaderMenu from './components/HeaderMenu'
 
 const DEFAULT_PAIR: PuyoPair = {
   axis: PuyoColor.Red,
@@ -21,6 +23,7 @@ function App() {
     placeAndAddNode,
     updateMemo,
     resetGraph,
+    importGraph,
     loading,
   } = useGraph()
 
@@ -140,6 +143,31 @@ function App() {
     }
   }, [resetGraph])
 
+  const handleExport = useCallback(() => {
+    exportGraphToFile(graph)
+  }, [graph])
+
+  const handleImport = useCallback(() => {
+    importGraphFromFile()
+      .then((imported) => {
+        if (!imported) return
+        if (
+          !window.confirm(
+            '現在のデータを上書きしてインポートしますか？この操作は取り消せません。',
+          )
+        ) {
+          return
+        }
+        importGraph(imported)
+        setIsDialogOpen(false)
+      })
+      .catch((e: unknown) => {
+        window.alert(
+          e instanceof Error ? e.message : 'インポートに失敗しました。',
+        )
+      })
+  }, [importGraph])
+
   const currentBoard = selectedNode?.board
 
   if (loading) {
@@ -157,12 +185,11 @@ function App() {
         <h1 className="text-xl font-bold text-gray-900">
           ぷよぷよ通 初手研究チャート
         </h1>
-        <button
-          onClick={handleResetGraph}
-          className="text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition-colors cursor-pointer"
-        >
-          リセット
-        </button>
+        <HeaderMenu
+          onExport={handleExport}
+          onImport={handleImport}
+          onReset={handleResetGraph}
+        />
       </header>
 
       <div
