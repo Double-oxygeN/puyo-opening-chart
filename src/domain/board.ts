@@ -55,3 +55,23 @@ export function getDropRow(board: Board, col: number): number {
   }
   return -1
 }
+
+/** 盤面の上部の空白行を除去してコンパクトな表現にする */
+export function compactBoard(board: Board): PuyoColorType[][] {
+  let topRow = board.length - 1
+  while (topRow >= 0 && board[topRow].every((c) => c === PuyoColor.Empty)) {
+    topRow--
+  }
+  return board.slice(0, topRow + 1)
+}
+
+/** コンパクトな盤面を BOARD_ROWS 行に展開する */
+export function expandBoard(rows: PuyoColorType[][]): Board {
+  const board = createEmptyBoard()
+  for (let r = 0; r < rows.length && r < BOARD_ROWS; r++) {
+    for (let c = 0; c < rows[r].length && c < BOARD_COLS; c++) {
+      board[r][c] = rows[r][c]
+    }
+  }
+  return board
+}

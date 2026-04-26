@@ -10,10 +10,15 @@ import {
   findMergeableNode,
   findDuplicateEdge,
   updateNodeMemo,
+  serializeGraph,
+  deserializeGraph,
+  validateGraph,
 } from './graph'
 import type { NodeId } from './graph'
 import { createEmptyBoard, setCell } from './board'
 import { PuyoColor } from './color'
+import { Rotation } from './pair'
+import { placePair } from './pair'
 
 describe('createInitialGraph', () => {
   it('creates a graph with one empty board node', () => {
@@ -45,7 +50,7 @@ describe('addEdge', () => {
     graph = graph2
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
 
     expect(graph.edges).toHaveLength(1)
     expect(graph.edges[0].from).toBe('node-0')
@@ -64,7 +69,16 @@ describe('addEdge with next/nextNext', () => {
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
     const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
     const nextNext = { axis: PuyoColor.Blue, child: PuyoColor.Red }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, next, nextNext)
+    graph = addEdge(
+      graph,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      2,
+      Rotation.Up,
+      next,
+      nextNext,
+    )
 
     expect(graph.edges).toHaveLength(1)
     expect(graph.edges[0].pair).toEqual(pair)
@@ -79,7 +93,7 @@ describe('addEdge with next/nextNext', () => {
     graph = graph2
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
 
     expect(graph.edges[0].next).toBeUndefined()
     expect(graph.edges[0].nextNext).toBeUndefined()
@@ -95,7 +109,15 @@ describe('findMatchingEdge', () => {
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
     const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, next)
+    graph = addEdge(
+      graph,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      2,
+      Rotation.Up,
+      next,
+    )
 
     const found = findMatchingEdge(graph, 'node-0' as NodeId, pair, next)
     expect(found).toBeDefined()
@@ -110,7 +132,15 @@ describe('findMatchingEdge', () => {
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
     const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, next)
+    graph = addEdge(
+      graph,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      2,
+      Rotation.Up,
+      next,
+    )
 
     const differentNext = { axis: PuyoColor.Blue, child: PuyoColor.Red }
     const found = findMatchingEdge(
@@ -129,7 +159,7 @@ describe('findMatchingEdge', () => {
     graph = graph2
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
 
     const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
     expect(
@@ -150,7 +180,7 @@ describe('replaceEdgeTarget', () => {
     graph = g2
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair, 2, Rotation.Up)
 
     const edgeId = graph.edges[0].id
     graph = replaceEdgeTarget(graph, edgeId, nodeB.id)
@@ -174,8 +204,8 @@ describe('replaceEdgeTarget', () => {
     graph = g3
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair)
-    graph = addEdge(graph, nodeA.id, nodeB.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair, 2, Rotation.Up)
+    graph = addEdge(graph, nodeA.id, nodeB.id, pair, 2, Rotation.Up)
 
     const edgeId = graph.edges[0].id
     graph = replaceEdgeTarget(graph, edgeId, nodeC.id)
@@ -202,10 +232,10 @@ describe('replaceEdgeTarget', () => {
     graph = g4
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair)
-    graph = addEdge(graph, 'node-0' as NodeId, nodeB.id, pair)
-    graph = addEdge(graph, nodeA.id, nodeC.id, pair)
-    graph = addEdge(graph, nodeB.id, nodeC.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair, 2, Rotation.Up)
+    graph = addEdge(graph, 'node-0' as NodeId, nodeB.id, pair, 2, Rotation.Up)
+    graph = addEdge(graph, nodeA.id, nodeC.id, pair, 2, Rotation.Up)
+    graph = addEdge(graph, nodeB.id, nodeC.id, pair, 2, Rotation.Up)
 
     // Redirect root→A to root→D; A becomes unreachable but C remains via B
     const rootToAEdge = graph.edges.find(
@@ -235,10 +265,17 @@ describe('pruneUnreachable', () => {
     let graph = createInitialGraph()
     const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
     const [g1, node] = addNode(graph, board)
-    graph = addEdge(g1, 'node-0' as NodeId, node.id, {
-      axis: PuyoColor.Red,
-      child: PuyoColor.Blue,
-    })
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      {
+        axis: PuyoColor.Red,
+        child: PuyoColor.Blue,
+      },
+      2,
+      Rotation.Up,
+    )
 
     const pruned = pruneUnreachable(graph)
     expect(pruned).toBe(graph) // referential equality (no-op)
@@ -345,7 +382,7 @@ describe('findDuplicateEdge', () => {
     graph = graph2
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
 
     const found = findDuplicateEdge(graph, 'node-0' as NodeId, node.id)
     expect(found).toBeDefined()
@@ -360,7 +397,7 @@ describe('findDuplicateEdge', () => {
     graph = g2
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
-    graph = addEdge(graph, 'node-0' as NodeId, node1.id, pair)
+    graph = addEdge(graph, 'node-0' as NodeId, node1.id, pair, 2, Rotation.Up)
 
     const found = findDuplicateEdge(
       graph,
@@ -378,7 +415,15 @@ describe('findDuplicateEdge', () => {
 
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
     const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
-    graph = addEdge(graph, 'node-0' as NodeId, node.id, pair, next)
+    graph = addEdge(
+      graph,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      2,
+      Rotation.Up,
+      next,
+    )
 
     // 異なる next で検索
     const differentNext = { axis: PuyoColor.Blue, child: PuyoColor.Red }
@@ -416,5 +461,181 @@ describe('updateNodeMemo', () => {
 
     graph = updateNodeMemo(graph, 'node-0' as NodeId, '')
     expect(graph.nodes[0].memo).toBeUndefined()
+  })
+})
+
+describe('serializeGraph / deserializeGraph', () => {
+  it('round-trips an initial graph', () => {
+    const graph = createInitialGraph()
+    const json = serializeGraph(graph)
+    const restored = deserializeGraph(json)
+
+    expect(restored).not.toBeNull()
+    expect(restored!.nodes).toHaveLength(1)
+    expect(restored!.edges).toHaveLength(0)
+    expect(restored!.nodeIdSeq).toBe(graph.nodeIdSeq)
+    expect(restored!.edgeIdSeq).toBe(graph.edgeIdSeq)
+  })
+
+  it('round-trips a graph with nodes, edges, and constraints', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const constraint = {
+      currentPair: { axis: PuyoColor.Green, child: PuyoColor.Blue },
+    }
+    const [g1, node] = addNode(graph, board, constraint)
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    const next = { axis: PuyoColor.Green, child: PuyoColor.Yellow }
+    graph = addEdge(g1, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up, next)
+
+    const json = serializeGraph(graph)
+    const restored = deserializeGraph(json)
+
+    expect(restored).not.toBeNull()
+    expect(restored!.nodes).toHaveLength(2)
+    expect(restored!.edges).toHaveLength(1)
+    expect(restored!.nodes[1].constraint).toEqual(constraint)
+    expect(restored!.edges[0].pair).toEqual(pair)
+    expect(restored!.edges[0].next).toEqual(next)
+  })
+
+  it('round-trips a graph with memo', () => {
+    let graph = createInitialGraph()
+    graph = updateNodeMemo(graph, 'node-0' as NodeId, 'テストメモ')
+
+    const json = serializeGraph(graph)
+    const restored = deserializeGraph(json)
+
+    expect(restored).not.toBeNull()
+    expect(restored!.nodes[0].memo).toBe('テストメモ')
+  })
+
+  it('returns null for invalid JSON', () => {
+    expect(deserializeGraph('not json')).toBeNull()
+  })
+
+  it('returns null for empty object', () => {
+    expect(deserializeGraph('{}')).toBeNull()
+  })
+
+  it('returns null for missing nodes', () => {
+    expect(
+      deserializeGraph(
+        JSON.stringify({ edges: [], nodeIdSeq: 0, edgeIdSeq: 0 }),
+      ),
+    ).toBeNull()
+  })
+
+  it('returns null for empty nodes array', () => {
+    expect(
+      deserializeGraph(
+        JSON.stringify({ nodes: [], edges: [], nodeIdSeq: 0, edgeIdSeq: 0 }),
+      ),
+    ).toBeNull()
+  })
+
+  it('returns null for node without id', () => {
+    expect(
+      deserializeGraph(
+        JSON.stringify({
+          nodes: [{ board: [] }],
+          edges: [],
+          nodeIdSeq: 0,
+          edgeIdSeq: 0,
+        }),
+      ),
+    ).toBeNull()
+  })
+
+  it('returns null for edge without required fields', () => {
+    expect(
+      deserializeGraph(
+        JSON.stringify({
+          nodes: [{ id: 'node-0', board: [] }],
+          edges: [{ id: 'edge-0' }],
+          nodeIdSeq: 1,
+          edgeIdSeq: 1,
+        }),
+      ),
+    ).toBeNull()
+  })
+
+  it('returns null for edge without col/rotation', () => {
+    expect(
+      deserializeGraph(
+        JSON.stringify({
+          nodes: [{ id: 'node-0', board: [] }],
+          edges: [
+            {
+              id: 'edge-0',
+              from: 'node-0',
+              to: 'node-1',
+              pair: { axis: 1, child: 2 },
+            },
+          ],
+          nodeIdSeq: 2,
+          edgeIdSeq: 1,
+        }),
+      ),
+    ).toBeNull()
+  })
+})
+
+describe('validateGraph', () => {
+  it('validates an initial graph (root only)', () => {
+    const graph = createInitialGraph()
+    expect(validateGraph(graph)).toBe(true)
+  })
+
+  it('validates a graph built with placePair operations', () => {
+    let graph = createInitialGraph()
+
+    // 赤赤を2列目に縦置き → 盤面の [0][2] と [1][2] に赤が配置される
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    const board = placePair(createEmptyBoard(), {
+      pair,
+      col: 2,
+      rotation: Rotation.Up,
+    })!
+    const [g1, node] = addNode(graph, board)
+    graph = addEdge(g1, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
+
+    expect(validateGraph(graph)).toBe(true)
+  })
+
+  it('rejects a graph where edge operation does not produce target board', () => {
+    let graph = createInitialGraph()
+    // 盤面は手動で作るが、エッジの操作（col=2, Up）で再生しても一致しない
+    const wrongBoard = setCell(createEmptyBoard(), 0, 5, PuyoColor.Red)
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Blue }
+    const [g1, node] = addNode(graph, wrongBoard)
+    graph = addEdge(g1, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
+
+    expect(validateGraph(graph)).toBe(false)
+  })
+
+  it('rejects a graph with unreachable nodes', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1] = addNode(graph, board) // node-1 has no edge
+    graph = g1
+
+    expect(validateGraph(graph)).toBe(false)
+  })
+
+  it('rejects a graph with edge referencing missing node', () => {
+    let graph = createInitialGraph()
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    // エッジの遷移先が存在しないノード
+    graph = addEdge(
+      graph,
+      'node-0' as NodeId,
+      'node-99' as NodeId,
+      pair,
+      2,
+      Rotation.Up,
+    )
+
+    expect(validateGraph(graph)).toBe(false)
   })
 })

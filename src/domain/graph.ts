@@ -1,6 +1,13 @@
 import type { Board } from './board'
 import type { PuyoPair } from './pair'
-import { createEmptyBoard, boardsEqual } from './board'
+import type { Rotation } from './pair'
+import {
+  createEmptyBoard,
+  boardsEqual,
+  compactBoard,
+  expandBoard,
+} from './board'
+import { placePair } from './pair'
 
 /** ノードの一意識別子 */
 export type NodeId = string & { readonly __brand: 'NodeId' }
@@ -28,6 +35,8 @@ export interface GraphEdge {
   readonly from: NodeId
   readonly to: NodeId
   readonly pair: PuyoPair
+  readonly col: number
+  readonly rotation: Rotation
   readonly next?: PuyoPair
   readonly nextNext?: PuyoPair
 }
@@ -76,6 +85,8 @@ export function addEdge(
   from: NodeId,
   to: NodeId,
   pair: PuyoPair,
+  col: number,
+  rotation: Rotation,
   next?: PuyoPair,
   nextNext?: PuyoPair,
 ): Graph {
@@ -84,6 +95,8 @@ export function addEdge(
     from,
     to,
     pair,
+    col,
+    rotation,
     ...(next != null ? { next } : {}),
     ...(nextNext != null ? { nextNext } : {}),
   }
@@ -200,6 +213,107 @@ export function updateNodeMemo(
       n.id === nodeId ? { ...n, memo: normalizedMemo } : n,
     ),
   }
+}
+
+/** グラフをJSON文字列にシリアライズする（盤面の空白行を省略して圧縮） */
+export function serializeGraph(graph: Graph): string {
+  const compactGraph = {
+    ...graph,
+    nodes: graph.nodes.map((n) => ({
+      ...n,
+      board: compactBoard(n.board),
+    })),
+  }
+  return JSON.stringify(compactGraph)
+}
+
+/** JSON文字列からグラフをデシリアライズする。不正データの場合は null を返す */
+export function deserializeGraph(json: string): Graph | null {
+  try {
+    const data: unknown = JSON.parse(json)
+    if (!isValidGraph(data)) return null
+    // 圧縮された盤面を展開
+    return {
+      ...data,
+      nodes: data.nodes.map((n) => ({
+        ...n,
+        board: expandBoard(n.board),
+      })),
+    }
+  } catch {
+    return null
+  }
+}
+
+function isValidGraph(data: unknown): data is Graph {
+  if (typeof data !== 'object' || data === null) return false
+  const obj = data as Record<string, unknown>
+
+  if (typeof obj.nodeIdSeq !== 'number') return false
+  if (typeof obj.edgeIdSeq !== 'number') return false
+  if (!Array.isArray(obj.nodes) || obj.nodes.length === 0) return false
+  if (!Array.isArray(obj.edges)) return false
+
+  for (const node of obj.nodes) {
+    if (typeof node !== 'object' || node === null) return false
+    const n = node as Record<string, unknown>
+    if (typeof n.id !== 'string') return false
+    if (!Array.isArray(n.board)) return false
+  }
+
+  for (const edge of obj.edges) {
+    if (typeof edge !== 'object' || edge === null) return false
+    const e = edge as Record<string, unknown>
+    if (typeof e.id !== 'string') return false
+    if (typeof e.from !== 'string') return false
+    if (typeof e.to !== 'string') return false
+    if (typeof e.pair !== 'object' || e.pair === null) return false
+    if (typeof e.col !== 'number') return false
+    if (typeof e.rotation !== 'number') return false
+  }
+
+  return true
+}
+
+/** 保存データの整合性を検証する: 各エッジの操作を再生して遷移先ノードの盤面と一致するか確認する */
+export function validateGraph(graph: Graph): boolean {
+  const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]))
+
+  // ルートノードの存在確認
+  if (graph.nodes.length === 0 || !nodeMap.has(graph.nodes[0].id)) return false
+
+  // 全エッジの操作を再生して検証
+  for (const edge of graph.edges) {
+    const fromNode = nodeMap.get(edge.from)
+    const toNode = nodeMap.get(edge.to)
+    if (!fromNode || !toNode) return false
+
+    const pairState = {
+      pair: edge.pair,
+      col: edge.col,
+      rotation: edge.rotation,
+    }
+    const resultBoard = placePair(fromNode.board, pairState)
+    if (!resultBoard) return false
+    if (!boardsEqual(resultBoard, toNode.board)) return false
+  }
+
+  // ルート以外の全ノードがエッジで到達可能か確認
+  const rootId = graph.nodes[0].id
+  const reachable = new Set<NodeId>()
+  reachable.add(rootId)
+  const queue: NodeId[] = [rootId]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const e of graph.edges) {
+      if (e.from === current && !reachable.has(e.to)) {
+        reachable.add(e.to)
+        queue.push(e.to)
+      }
+    }
+  }
+
+  return graph.nodes.every((n) => reachable.has(n.id))
 }
 
 /** 同一親ノードから同じ遷移先ノードへの重複エッジを検索する */

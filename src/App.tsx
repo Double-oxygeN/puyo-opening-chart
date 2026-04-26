@@ -20,6 +20,8 @@ function App() {
     selectNode,
     placeAndAddNode,
     updateMemo,
+    resetGraph,
+    loading,
   } = useGraph()
 
   const [pair, setPair] = useState<PuyoPair>(DEFAULT_PAIR)
@@ -127,15 +129,40 @@ function App() {
     [updateMemo, selectedNodeId],
   )
 
+  const handleResetGraph = useCallback(() => {
+    if (
+      window.confirm(
+        'すべてのデータをリセットしますか？この操作は取り消せません。',
+      )
+    ) {
+      resetGraph()
+      setIsDialogOpen(false)
+    }
+  }, [resetGraph])
+
   const currentBoard = selectedNode?.board
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500">読み込み中…</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* ヘッダー */}
-      <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+      <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">
           ぷよぷよ通 初手研究チャート
         </h1>
+        <button
+          onClick={handleResetGraph}
+          className="text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition-colors cursor-pointer"
+        >
+          リセット
+        </button>
       </header>
 
       <div

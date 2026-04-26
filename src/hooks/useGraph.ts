@@ -1,4 +1,4 @@
-import { useReducer, useCallback } from 'react'
+import { useReducer, useCallback, useEffect } from 'react'
 import type { Graph, GraphNode, NodeId, TsumoConstraint } from '../domain/graph'
 import {
   createInitialGraph,
@@ -9,13 +9,17 @@ import {
   findDuplicateEdge,
   replaceEdgeTarget,
   updateNodeMemo,
+  validateGraph,
 } from '../domain/graph'
 import { placePair } from '../domain/pair'
 import type { PairState, PuyoPair } from '../domain/pair'
+import { loadGraph, saveGraph, clearGraph } from './useGraphStorage'
 
 interface GraphState {
   graph: Graph
   selectedNodeId: NodeId
+  /** localStorage からの読み込み（hydration）が完了したか */
+  hydrated: boolean
 }
 
 type GraphAction =
@@ -27,6 +31,8 @@ type GraphAction =
       nextNext?: PuyoPair
     }
   | { type: 'updateMemo'; nodeId: NodeId; memo: string }
+  | { type: 'resetGraph' }
+  | { type: 'hydrateGraph'; graph: Graph }
 
 function graphReducer(state: GraphState, action: GraphAction): GraphState {
   switch (action.type) {
@@ -81,7 +87,11 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
             existingEdge.id,
             mergeTarget.id,
           )
-          return { graph: updatedGraph, selectedNodeId: mergeTarget.id }
+          return {
+            ...state,
+            graph: updatedGraph,
+            selectedNodeId: mergeTarget.id,
+          }
         }
 
         // 新ノードを作成し、エッジの遷移先を差し替え
@@ -95,7 +105,7 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           existingEdge.id,
           newNode.id,
         )
-        return { graph: updatedGraph, selectedNodeId: newNode.id }
+        return { ...state, graph: updatedGraph, selectedNodeId: newNode.id }
       }
 
       // 遷移先ノードのツモ制約を計算
@@ -129,10 +139,16 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           state.selectedNodeId,
           mergeableNode.id,
           action.pairState.pair,
+          action.pairState.col,
+          action.pairState.rotation,
           action.next,
           action.nextNext,
         )
-        return { graph: graphWithEdge, selectedNodeId: mergeableNode.id }
+        return {
+          ...state,
+          graph: graphWithEdge,
+          selectedNodeId: mergeableNode.id,
+        }
       }
 
       const [graphWithNode, newNode] = addNode(
@@ -145,11 +161,13 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         state.selectedNodeId,
         newNode.id,
         action.pairState.pair,
+        action.pairState.col,
+        action.pairState.rotation,
         action.next,
         action.nextNext,
       )
 
-      return { graph: graphWithEdge, selectedNodeId: newNode.id }
+      return { ...state, graph: graphWithEdge, selectedNodeId: newNode.id }
     }
 
     case 'updateMemo':
@@ -157,12 +175,24 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         ...state,
         graph: updateNodeMemo(state.graph, action.nodeId, action.memo),
       }
+
+    case 'resetGraph': {
+      clearGraph()
+      return createInitialState(true)
+    }
+
+    case 'hydrateGraph':
+      return {
+        graph: action.graph,
+        selectedNodeId: action.graph.nodes[0].id,
+        hydrated: true,
+      }
   }
 }
 
-function createInitialState(): GraphState {
+function createInitialState(hydrated = false): GraphState {
   const graph = createInitialGraph()
-  return { graph, selectedNodeId: graph.nodes[0].id }
+  return { graph, selectedNodeId: graph.nodes[0].id, hydrated }
 }
 
 interface UseGraphReturn {
@@ -176,6 +206,8 @@ interface UseGraphReturn {
     nextNext?: PuyoPair,
   ) => boolean
   updateMemo: (nodeId: NodeId, memo: string) => void
+  resetGraph: () => void
+  loading: boolean
 }
 
 export function useGraph(): UseGraphReturn {
@@ -211,6 +243,49 @@ export function useGraph(): UseGraphReturn {
     dispatch({ type: 'updateMemo', nodeId, memo })
   }, [])
 
+  const resetGraph = useCallback(() => {
+    dispatch({ type: 'resetGraph' })
+  }, [])
+
+  // 初回マウント時に localStorage から非同期読み込み・検証
+  useEffect(() => {
+    let cancelled = false
+
+    const hydrate = () => {
+      const saved = loadGraph()
+      if (!saved) {
+        if (!cancelled)
+          dispatch({ type: 'hydrateGraph', graph: createInitialGraph() })
+        return
+      }
+
+      if (!validateGraph(saved)) {
+        console.error(
+          '保存データの整合性検証に失敗しました。初期状態で起動します。',
+        )
+        if (!cancelled)
+          dispatch({ type: 'hydrateGraph', graph: createInitialGraph() })
+        return
+      }
+
+      if (!cancelled) dispatch({ type: 'hydrateGraph', graph: saved })
+    }
+
+    // 非同期にして読み込み中UIを表示可能にする
+    void Promise.resolve().then(hydrate)
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // hydration 完了後のみグラフ変更を自動保存
+  useEffect(() => {
+    if (!state.hydrated) return
+
+    saveGraph(state.graph)
+  }, [state.graph, state.hydrated])
+
   return {
     graph: state.graph,
     selectedNode,
@@ -218,5 +293,7 @@ export function useGraph(): UseGraphReturn {
     selectNode,
     placeAndAddNode,
     updateMemo,
+    resetGraph,
+    loading: !state.hydrated,
   }
 }

@@ -5,6 +5,8 @@ import {
   getCell,
   setCell,
   boardsEqual,
+  compactBoard,
+  expandBoard,
   BOARD_COLS,
   BOARD_ROWS,
 } from './board'
@@ -89,5 +91,44 @@ describe('boardsEqual', () => {
     const a = createEmptyBoard()
     const b = setCell(createEmptyBoard(), 0, 0, PuyoColor.Green)
     expect(boardsEqual(a, b)).toBe(false)
+  })
+})
+
+describe('compactBoard / expandBoard', () => {
+  it('compacts an empty board to zero rows', () => {
+    const board = createEmptyBoard()
+    const compact = compactBoard(board)
+    expect(compact).toHaveLength(0)
+  })
+
+  it('compacts a board with puyos on row 0 to 1 row', () => {
+    const board = setCell(createEmptyBoard(), 0, 2, PuyoColor.Red)
+    const compact = compactBoard(board)
+    expect(compact).toHaveLength(1)
+    expect(compact[0][2]).toBe(PuyoColor.Red)
+  })
+
+  it('compacts a board with puyos on rows 0-2 to 3 rows', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 0, PuyoColor.Red)
+    board = setCell(board, 1, 0, PuyoColor.Green)
+    board = setCell(board, 2, 0, PuyoColor.Blue)
+    const compact = compactBoard(board)
+    expect(compact).toHaveLength(3)
+  })
+
+  it('round-trips through compact and expand', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 0, PuyoColor.Red)
+    board = setCell(board, 1, 0, PuyoColor.Green)
+
+    const expanded = expandBoard(compactBoard(board))
+    expect(boardsEqual(board, expanded)).toBe(true)
+  })
+
+  it('round-trips an empty board', () => {
+    const board = createEmptyBoard()
+    const expanded = expandBoard(compactBoard(board))
+    expect(boardsEqual(board, expanded)).toBe(true)
   })
 })
