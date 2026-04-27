@@ -5,6 +5,8 @@ import { ALL_DIFFICULTIES, DIFFICULTY_LABELS } from '../domain/difficulty'
 interface HeaderMenuProps {
   difficulty: Difficulty
   onChangeDifficulty: (difficulty: Difficulty) => void
+  randomTsumo: boolean
+  onToggleRandomTsumo: () => void
   onExport: () => void
   onImport: () => void
   onReset: () => void
@@ -13,6 +15,8 @@ interface HeaderMenuProps {
 export default function HeaderMenu({
   difficulty,
   onChangeDifficulty,
+  randomTsumo,
+  onToggleRandomTsumo,
   onExport,
   onImport,
   onReset,
@@ -89,6 +93,26 @@ export default function HeaderMenu({
                 </button>
               ))}
             </div>
+          </div>
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-500">
+              ランダムツモ
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={randomTsumo}
+              onClick={onToggleRandomTsumo}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                randomTsumo ? 'bg-blue-500' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform mt-0.5 ${
+                  randomTsumo ? 'translate-x-4 ml-0.5' : 'translate-x-0 ml-0.5'
+                }`}
+              />
+            </button>
           </div>
           <button
             onClick={handleExport}

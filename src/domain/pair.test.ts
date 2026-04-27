@@ -7,10 +7,12 @@ import {
   rotateCounterClockwise,
   placePair,
   getDropPreview,
+  generateRandomPair,
   Rotation,
   INITIAL_COL,
 } from './pair'
-import { PuyoColor } from './color'
+import { PuyoColor, FILLED_COLORS } from './color'
+import type { FilledColor } from './color'
 import {
   createEmptyBoard,
   getCell,
@@ -263,5 +265,36 @@ describe('getDropPreview', () => {
     expect(preview).not.toBeNull()
     expect(preview!.axis).toEqual({ row: 0, col: 2 })
     expect(preview!.child).toEqual({ row: 0, col: 3 })
+  })
+})
+
+describe('generateRandomPair', () => {
+  it('generates a pair with colors from availableColors', () => {
+    const colors: readonly FilledColor[] = [PuyoColor.Red, PuyoColor.Green]
+    for (let i = 0; i < 50; i++) {
+      const pair = generateRandomPair(colors)
+      expect(colors).toContain(pair.axis)
+      expect(colors).toContain(pair.child)
+    }
+  })
+
+  it('works with a single color', () => {
+    const colors: readonly FilledColor[] = [PuyoColor.Blue]
+    const pair = generateRandomPair(colors)
+    expect(pair.axis).toBe(PuyoColor.Blue)
+    expect(pair.child).toBe(PuyoColor.Blue)
+  })
+
+  it('can generate different combinations with all 5 colors', () => {
+    const seenAxis = new Set<FilledColor>()
+    const seenChild = new Set<FilledColor>()
+    for (let i = 0; i < 200; i++) {
+      const pair = generateRandomPair(FILLED_COLORS)
+      seenAxis.add(pair.axis)
+      seenChild.add(pair.child)
+    }
+    // 200回試行で全5色が出ないのは極めてまれ
+    expect(seenAxis.size).toBe(5)
+    expect(seenChild.size).toBe(5)
   })
 })

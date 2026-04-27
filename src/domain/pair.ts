@@ -158,6 +158,17 @@ export function placePair(board: Board, state: PairState): Board | null {
   }
 }
 
+/** 使用可能な色からランダムに組ぷよを生成する */
+export function generateRandomPair(
+  availableColors: readonly FilledColor[],
+): PuyoPair {
+  const axis =
+    availableColors[Math.floor(Math.random() * availableColors.length)]
+  const child =
+    availableColors[Math.floor(Math.random() * availableColors.length)]
+  return { axis, child }
+}
+
 /**
  * 操作中の組ぷよの落下プレビュー位置を計算する。
  * 各ぷよが実際に落下する [row, col] を返す。

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { PuyoColor } from './domain/color'
 import type { PuyoPair, PairState } from './domain/pair'
-import { createInitialPairState } from './domain/pair'
+import { createInitialPairState, generateRandomPair } from './domain/pair'
 import { isDead } from './domain/board'
 import type { Difficulty } from './domain/difficulty'
 import { getAvailableColors } from './domain/difficulty'
@@ -40,25 +40,24 @@ function App() {
     [difficulty],
   )
 
-  const [pair, setPair] = useState<PuyoPair>(DEFAULT_PAIR)
   const [pairState, setPairState] = useState<PairState>(
     createInitialPairState(DEFAULT_PAIR),
   )
   const [next, setNext] = useState<PuyoPair | null>(null)
   const [nextNext, setNextNext] = useState<PuyoPair | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [randomTsumo, setRandomTsumo] = useState(true)
 
   // ノードのツモ制約に基づく色確定ロジック
   const lockedPair = selectedNode?.constraint?.currentPair ?? null
   const lockedNext = selectedNode?.constraint?.nextPair ?? null
 
-  const effectivePair = lockedPair ?? pair
+  const effectivePair = lockedPair ?? pairState.pair
   const effectiveNext = lockedNext ?? next
 
   const handleChangePair = useCallback(
     (newPair: PuyoPair) => {
       if (lockedPair) return
-      setPair(newPair)
       setPairState(createInitialPairState(newPair))
     },
     [lockedPair],
@@ -77,7 +76,6 @@ function App() {
       resetGraph(newDifficulty)
       const newColors = getAvailableColors(newDifficulty)
       const defaultColor = newColors[0]
-      setPair({ axis: defaultColor, child: defaultColor })
       setPairState(
         createInitialPairState({ axis: defaultColor, child: defaultColor }),
       )
@@ -119,7 +117,6 @@ function App() {
     if (success) {
       // 配置後: ネクストがあればツモに繰り上げ、ネクネクがあればネクストに繰り上げ
       if (effectiveNext) {
-        setPair(effectiveNext)
         setPairState(createInitialPairState(effectiveNext))
         if (nextNext) {
           setNext(nextNext)
@@ -127,11 +124,23 @@ function App() {
           setNext(null)
         }
         setNextNext(null)
+      } else if (randomTsumo) {
+        // ランダムツモ: ネクスト未設定時に現在ツモをランダムに切り替え（制約には保存しない）
+        const randomPair = generateRandomPair(availableColors)
+        setPairState(createInitialPairState(randomPair))
       } else {
         setPairState(createInitialPairState(effectivePair))
       }
     }
-  }, [placeAndAddNode, pairState, effectivePair, effectiveNext, nextNext])
+  }, [
+    placeAndAddNode,
+    pairState,
+    effectivePair,
+    effectiveNext,
+    nextNext,
+    randomTsumo,
+    availableColors,
+  ])
 
   const handleSelectNode = useCallback(
     (nodeId: NodeId) => {
@@ -141,7 +150,6 @@ function App() {
       const node = graph.nodes.find((n) => n.id === nodeId)
       const constraint = node?.constraint
       if (constraint?.currentPair) {
-        setPair(constraint.currentPair)
         setPairState(createInitialPairState(constraint.currentPair))
         if (constraint.nextPair) {
           setNext(constraint.nextPair)
@@ -149,13 +157,13 @@ function App() {
           setNext(null)
         }
       } else {
-        setPairState(createInitialPairState(pair))
+        setPairState(createInitialPairState(pairState.pair))
         setNext(null)
       }
       setNextNext(null)
       setIsDialogOpen(true)
     },
-    [selectNode, pair, graph],
+    [selectNode, pairState.pair, graph],
   )
 
   const handleBackgroundClick = useCallback(() => {
@@ -179,6 +187,10 @@ function App() {
       setIsDialogOpen(false)
     }
   }, [resetGraph, difficulty])
+
+  const handleToggleRandomTsumo = useCallback(() => {
+    setRandomTsumo((prev) => !prev)
+  }, [])
 
   const handleDeleteNode = useCallback(() => {
     deleteNode(selectedNodeId)
@@ -231,6 +243,8 @@ function App() {
         <HeaderMenu
           difficulty={difficulty}
           onChangeDifficulty={handleChangeDifficulty}
+          randomTsumo={randomTsumo}
+          onToggleRandomTsumo={handleToggleRandomTsumo}
           onExport={handleExport}
           onImport={handleImport}
           onReset={handleResetGraph}
