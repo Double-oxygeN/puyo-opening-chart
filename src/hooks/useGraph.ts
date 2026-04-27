@@ -16,11 +16,14 @@ import {
 import { placePair } from '../domain/pair'
 import { isDead } from '../domain/board'
 import type { PairState, PuyoPair } from '../domain/pair'
-import { loadGraph, saveGraph, clearGraph } from './useGraphStorage'
+import type { Difficulty } from '../domain/difficulty'
+import { DEFAULT_DIFFICULTY } from '../domain/difficulty'
+import { loadSaveData, saveSaveData, clearGraph } from './useGraphStorage'
 
 interface GraphState {
   graph: Graph
   selectedNodeId: NodeId
+  difficulty: Difficulty
   /** localStorage からの読み込み（hydration）が完了したか */
   hydrated: boolean
 }
@@ -35,9 +38,9 @@ type GraphAction =
     }
   | { type: 'updateMemo'; nodeId: NodeId; memo: string }
   | { type: 'deleteNode'; nodeId: NodeId }
-  | { type: 'resetGraph' }
-  | { type: 'hydrateGraph'; graph: Graph }
-  | { type: 'importGraph'; graph: Graph }
+  | { type: 'resetGraph'; difficulty: Difficulty }
+  | { type: 'hydrateGraph'; graph: Graph; difficulty: Difficulty }
+  | { type: 'importGraph'; graph: Graph; difficulty: Difficulty }
 
 function graphReducer(state: GraphState, action: GraphAction): GraphState {
   switch (action.type) {
@@ -196,13 +199,14 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
 
     case 'resetGraph': {
       clearGraph()
-      return createInitialState(true)
+      return createInitialState(true, action.difficulty)
     }
 
     case 'hydrateGraph':
       return {
         graph: action.graph,
         selectedNodeId: action.graph.nodes[0].id,
+        difficulty: action.difficulty,
         hydrated: true,
       }
 
@@ -210,20 +214,25 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
       return {
         graph: action.graph,
         selectedNodeId: action.graph.nodes[0].id,
+        difficulty: action.difficulty,
         hydrated: true,
       }
   }
 }
 
-function createInitialState(hydrated = false): GraphState {
+function createInitialState(
+  hydrated = false,
+  difficulty: Difficulty = DEFAULT_DIFFICULTY,
+): GraphState {
   const graph = createInitialGraph()
-  return { graph, selectedNodeId: graph.nodes[0].id, hydrated }
+  return { graph, selectedNodeId: graph.nodes[0].id, difficulty, hydrated }
 }
 
 interface UseGraphReturn {
   graph: Graph
   selectedNode: GraphNode | undefined
   selectedNodeId: NodeId
+  difficulty: Difficulty
   selectNode: (nodeId: NodeId) => void
   placeAndAddNode: (
     pairState: PairState,
@@ -232,8 +241,8 @@ interface UseGraphReturn {
   ) => boolean
   updateMemo: (nodeId: NodeId, memo: string) => void
   deleteNode: (nodeId: NodeId) => void
-  resetGraph: () => void
-  importGraph: (graph: Graph) => void
+  resetGraph: (difficulty: Difficulty) => void
+  importGraph: (graph: Graph, difficulty: Difficulty) => void
   loading: boolean
 }
 
@@ -275,12 +284,12 @@ export function useGraph(): UseGraphReturn {
     dispatch({ type: 'deleteNode', nodeId })
   }, [])
 
-  const resetGraph = useCallback(() => {
-    dispatch({ type: 'resetGraph' })
+  const resetGraph = useCallback((difficulty: Difficulty) => {
+    dispatch({ type: 'resetGraph', difficulty })
   }, [])
 
-  const importGraph = useCallback((graph: Graph) => {
-    dispatch({ type: 'importGraph', graph })
+  const importGraph = useCallback((graph: Graph, difficulty: Difficulty) => {
+    dispatch({ type: 'importGraph', graph, difficulty })
   }, [])
 
   // 初回マウント時に localStorage から非同期読み込み・検証
@@ -288,23 +297,36 @@ export function useGraph(): UseGraphReturn {
     let cancelled = false
 
     const hydrate = () => {
-      const saved = loadGraph()
-      if (!saved) {
+      const saveData = loadSaveData()
+      if (!saveData) {
         if (!cancelled)
-          dispatch({ type: 'hydrateGraph', graph: createInitialGraph() })
+          dispatch({
+            type: 'hydrateGraph',
+            graph: createInitialGraph(),
+            difficulty: DEFAULT_DIFFICULTY,
+          })
         return
       }
 
-      if (!validateGraph(saved)) {
+      if (!validateGraph(saveData.graph)) {
         console.error(
           '保存データの整合性検証に失敗しました。初期状態で起動します。',
         )
         if (!cancelled)
-          dispatch({ type: 'hydrateGraph', graph: createInitialGraph() })
+          dispatch({
+            type: 'hydrateGraph',
+            graph: createInitialGraph(),
+            difficulty: DEFAULT_DIFFICULTY,
+          })
         return
       }
 
-      if (!cancelled) dispatch({ type: 'hydrateGraph', graph: saved })
+      if (!cancelled)
+        dispatch({
+          type: 'hydrateGraph',
+          graph: saveData.graph,
+          difficulty: saveData.difficulty,
+        })
     }
 
     // 非同期にして読み込み中UIを表示可能にする
@@ -319,13 +341,14 @@ export function useGraph(): UseGraphReturn {
   useEffect(() => {
     if (!state.hydrated) return
 
-    saveGraph(state.graph)
-  }, [state.graph, state.hydrated])
+    saveSaveData({ graph: state.graph, difficulty: state.difficulty })
+  }, [state.graph, state.difficulty, state.hydrated])
 
   return {
     graph: state.graph,
     selectedNode,
     selectedNodeId: state.selectedNodeId,
+    difficulty: state.difficulty,
     selectNode,
     placeAndAddNode,
     updateMemo,

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Board } from '../domain/board'
+import type { FilledColor } from '../domain/color'
 import type { PuyoPair, PairState } from '../domain/pair'
 import BoardView from './BoardView'
 import PairSlot from './PairSlot'
@@ -9,6 +10,7 @@ interface BoardOperationDialogProps {
   board: Board
   pair: PuyoPair
   pairState: PairState
+  availableColors: readonly FilledColor[]
   onChangePair: (pair: PuyoPair) => void
   onUpdatePairState: (state: PairState) => void
   onPlace: () => void
@@ -37,6 +39,7 @@ export default function BoardOperationDialog({
   board,
   pair,
   pairState,
+  availableColors,
   onChangePair,
   onUpdatePairState,
   onPlace,
@@ -83,12 +86,14 @@ export default function BoardOperationDialog({
               <PairSlot
                 label="ツモ"
                 pair={pair}
+                availableColors={availableColors}
                 onChangePair={onChangePair}
                 editable={pairEditable}
               />
               <PairSlot
                 label="ネクスト"
                 pair={next}
+                availableColors={availableColors}
                 onChangePair={onChangeNext}
                 onClear={onClearNext}
                 editable={nextEditable}
@@ -96,6 +101,7 @@ export default function BoardOperationDialog({
               <PairSlot
                 label="ネクネク"
                 pair={nextNext}
+                availableColors={availableColors}
                 onChangePair={onChangeNextNext}
                 onClear={onClearNextNext}
                 disabled={next === null}

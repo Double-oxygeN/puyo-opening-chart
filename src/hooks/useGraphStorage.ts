@@ -4,11 +4,18 @@ import {
   deserializeGraph,
   validateGraph,
 } from '../domain/graph'
+import type { Difficulty } from '../domain/difficulty'
 
 const STORAGE_KEY = 'puyo-opening-chart:graph'
 
-/** localStorage からグラフを読み込む。キーがない場合は null、パース失敗時も null */
-export function loadGraph(): Graph | null {
+/** 保存データ: グラフ + 難易度 */
+export interface SaveData {
+  graph: Graph
+  difficulty: Difficulty
+}
+
+/** localStorage からグラフと難易度を読み込む。キーがない場合は null、パース失敗時も null */
+export function loadSaveData(): SaveData | null {
   try {
     const json = localStorage.getItem(STORAGE_KEY)
     if (json === null) return null
@@ -17,18 +24,39 @@ export function loadGraph(): Graph | null {
       console.error(
         'localStorage のグラフデータが不正です。データを無視します。',
       )
+      return null
     }
-    return graph
+
+    const raw: unknown = JSON.parse(json)
+    if (
+      typeof raw !== 'object' ||
+      raw === null ||
+      !('difficulty' in raw) ||
+      typeof (raw as Record<string, unknown>).difficulty !== 'string'
+    ) {
+      console.error(
+        'localStorage の難易度データが不正です。データを無視します。',
+      )
+      return null
+    }
+
+    return {
+      graph,
+      difficulty: (raw as Record<string, unknown>).difficulty as Difficulty,
+    }
   } catch (e) {
     console.error('localStorage からの読み込みに失敗しました:', e)
     return null
   }
 }
 
-/** localStorage にグラフを保存する */
-export function saveGraph(graph: Graph): void {
+/** localStorage にグラフと難易度を保存する */
+export function saveSaveData(data: SaveData): void {
   try {
-    localStorage.setItem(STORAGE_KEY, serializeGraph(graph))
+    const graphJson = serializeGraph(data.graph)
+    const parsed = JSON.parse(graphJson) as object
+    const withDifficulty = { ...parsed, difficulty: data.difficulty }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withDifficulty))
   } catch (e) {
     console.error('localStorage への保存に失敗しました:', e)
   }
@@ -43,9 +71,11 @@ export function clearGraph(): void {
   }
 }
 
-/** グラフをJSONファイルとしてダウンロードする */
-export function exportGraphToFile(graph: Graph): void {
-  const json = serializeGraph(graph)
+/** グラフと難易度をJSONファイルとしてダウンロードする */
+export function exportSaveDataToFile(data: SaveData): void {
+  const graphJson = serializeGraph(data.graph)
+  const parsed = JSON.parse(graphJson) as object
+  const json = JSON.stringify({ ...parsed, difficulty: data.difficulty })
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -57,8 +87,8 @@ export function exportGraphToFile(graph: Graph): void {
   URL.revokeObjectURL(url)
 }
 
-/** JSONファイルからグラフを読み込む。ファイル選択がキャンセルされた場合は null を返す */
-export function importGraphFromFile(): Promise<Graph | null> {
+/** JSONファイルからグラフと難易度を読み込む。ファイル選択がキャンセルされた場合は null を返す */
+export function importSaveDataFromFile(): Promise<SaveData | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -84,7 +114,23 @@ export function importGraphFromFile(): Promise<Graph | null> {
             reject(new Error('データの整合性検証に失敗しました。'))
             return
           }
-          resolve(graph)
+
+          const raw: unknown = JSON.parse(json)
+          if (
+            typeof raw !== 'object' ||
+            raw === null ||
+            !('difficulty' in raw) ||
+            typeof (raw as Record<string, unknown>).difficulty !== 'string'
+          ) {
+            reject(new Error('難易度データが不正です。'))
+            return
+          }
+
+          resolve({
+            graph,
+            difficulty: (raw as Record<string, unknown>)
+              .difficulty as Difficulty,
+          })
         } catch {
           reject(new Error('ファイルの読み込みに失敗しました。'))
         }

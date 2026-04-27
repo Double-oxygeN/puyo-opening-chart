@@ -6,6 +6,7 @@ import { Rotation } from '../domain/pair'
 import type { PairState, PuyoPair } from '../domain/pair'
 import type { NodeId } from '../domain/graph'
 import { DEAD_COL } from '../domain/board'
+import { DEFAULT_DIFFICULTY } from '../domain/difficulty'
 
 const RED_RED = { axis: PuyoColor.Red, child: PuyoColor.Red } as const
 const RED_BLUE = { axis: PuyoColor.Red, child: PuyoColor.Blue } as const
@@ -392,13 +393,13 @@ describe('useGraph', () => {
 
     // リセットしてからインポート
     act(() => {
-      result.current.resetGraph()
+      result.current.resetGraph(DEFAULT_DIFFICULTY)
     })
     expect(result.current.graph.nodes).toHaveLength(1)
 
     // グラフをインポート
     act(() => {
-      result.current.importGraph(importedGraph)
+      result.current.importGraph(importedGraph, DEFAULT_DIFFICULTY)
     })
 
     expect(result.current.graph.nodes).toHaveLength(2)

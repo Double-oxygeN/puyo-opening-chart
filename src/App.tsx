@@ -1,10 +1,15 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { PuyoColor } from './domain/color'
 import type { PuyoPair, PairState } from './domain/pair'
 import { createInitialPairState } from './domain/pair'
 import { isDead } from './domain/board'
+import type { Difficulty } from './domain/difficulty'
+import { getAvailableColors } from './domain/difficulty'
 import { useGraph } from './hooks/useGraph'
-import { exportGraphToFile, importGraphFromFile } from './hooks/useGraphStorage'
+import {
+  exportSaveDataToFile,
+  importSaveDataFromFile,
+} from './hooks/useGraphStorage'
 import type { NodeId } from './domain/graph'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
@@ -20,6 +25,7 @@ function App() {
     graph,
     selectedNode,
     selectedNodeId,
+    difficulty,
     selectNode,
     placeAndAddNode,
     updateMemo,
@@ -28,6 +34,11 @@ function App() {
     importGraph,
     loading,
   } = useGraph()
+
+  const availableColors = useMemo(
+    () => getAvailableColors(difficulty),
+    [difficulty],
+  )
 
   const [pair, setPair] = useState<PuyoPair>(DEFAULT_PAIR)
   const [pairState, setPairState] = useState<PairState>(
@@ -51,6 +62,30 @@ function App() {
       setPairState(createInitialPairState(newPair))
     },
     [lockedPair],
+  )
+
+  const handleChangeDifficulty = useCallback(
+    (newDifficulty: Difficulty) => {
+      if (newDifficulty === difficulty) return
+      if (
+        !window.confirm(
+          '難易度を変更するとグラフがリセットされます。よろしいですか？',
+        )
+      ) {
+        return
+      }
+      resetGraph(newDifficulty)
+      const newColors = getAvailableColors(newDifficulty)
+      const defaultColor = newColors[0]
+      setPair({ axis: defaultColor, child: defaultColor })
+      setPairState(
+        createInitialPairState({ axis: defaultColor, child: defaultColor }),
+      )
+      setNext(null)
+      setNextNext(null)
+      setIsDialogOpen(false)
+    },
+    [difficulty, resetGraph],
   )
 
   const handleChangeNext = useCallback(
@@ -140,10 +175,10 @@ function App() {
         'すべてのデータをリセットしますか？この操作は取り消せません。',
       )
     ) {
-      resetGraph()
+      resetGraph(difficulty)
       setIsDialogOpen(false)
     }
-  }, [resetGraph])
+  }, [resetGraph, difficulty])
 
   const handleDeleteNode = useCallback(() => {
     deleteNode(selectedNodeId)
@@ -151,11 +186,11 @@ function App() {
   }, [deleteNode, selectedNodeId])
 
   const handleExport = useCallback(() => {
-    exportGraphToFile(graph)
-  }, [graph])
+    exportSaveDataToFile({ graph, difficulty })
+  }, [graph, difficulty])
 
   const handleImport = useCallback(() => {
-    importGraphFromFile()
+    importSaveDataFromFile()
       .then((imported) => {
         if (!imported) return
         if (
@@ -165,7 +200,7 @@ function App() {
         ) {
           return
         }
-        importGraph(imported)
+        importGraph(imported.graph, imported.difficulty)
         setIsDialogOpen(false)
       })
       .catch((e: unknown) => {
@@ -194,6 +229,8 @@ function App() {
           ぷよぷよ通 初手研究チャート
         </h1>
         <HeaderMenu
+          difficulty={difficulty}
+          onChangeDifficulty={handleChangeDifficulty}
           onExport={handleExport}
           onImport={handleImport}
           onReset={handleResetGraph}
@@ -218,6 +255,7 @@ function App() {
           board={currentBoard}
           pair={effectivePair}
           pairState={pairState}
+          availableColors={availableColors}
           onChangePair={handleChangePair}
           onUpdatePairState={setPairState}
           onPlace={handlePlace}

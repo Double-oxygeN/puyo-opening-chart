@@ -1,9 +1,10 @@
 import type { FilledColor } from '../domain/color'
 import type { PuyoPair } from '../domain/pair'
-import { FILLED_COLORS, COLOR_LABELS, PUYO_BG_CLASSES } from '../domain/color'
+import { COLOR_LABELS, PUYO_BG_CLASSES } from '../domain/color'
 
 interface PairSelectorProps {
   pair: PuyoPair
+  availableColors: readonly FilledColor[]
   onChangePair: (pair: PuyoPair) => void
 }
 
@@ -31,6 +32,7 @@ function ColorButton({
 
 export default function PairSelector({
   pair,
+  availableColors,
   onChangePair,
 }: PairSelectorProps) {
   return (
@@ -40,7 +42,7 @@ export default function PairSelector({
           軸ぷよ
         </span>
         <div className="flex gap-2">
-          {FILLED_COLORS.map((color) => (
+          {availableColors.map((color) => (
             <ColorButton
               key={color}
               color={color}
@@ -55,7 +57,7 @@ export default function PairSelector({
           子ぷよ
         </span>
         <div className="flex gap-2">
-          {FILLED_COLORS.map((color) => (
+          {availableColors.map((color) => (
             <ColorButton
               key={color}
               color={color}

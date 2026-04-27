@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { exportGraphToFile, importGraphFromFile } from './useGraphStorage'
+import { exportSaveDataToFile, importSaveDataFromFile } from './useGraphStorage'
 import { createInitialGraph, addNode, addEdge } from '../domain/graph'
 import type { NodeId } from '../domain/graph'
 import { PuyoColor } from '../domain/color'
 import { Rotation } from '../domain/pair'
 import { placePair } from '../domain/pair'
+import { DEFAULT_DIFFICULTY } from '../domain/difficulty'
 
 function buildTestGraph() {
   let graph = createInitialGraph()
@@ -19,7 +20,7 @@ function buildTestGraph() {
   return graph
 }
 
-describe('exportGraphToFile', () => {
+describe('exportSaveDataToFile', () => {
   it('triggers a file download with JSON content', () => {
     const createObjectURL = vi.fn(() => 'blob:test')
     const revokeObjectURL = vi.fn()
@@ -40,7 +41,7 @@ describe('exportGraphToFile', () => {
     })
 
     const graph = buildTestGraph()
-    exportGraphToFile(graph)
+    exportSaveDataToFile({ graph, difficulty: DEFAULT_DIFFICULTY })
 
     expect(createObjectURL).toHaveBeenCalledOnce()
     expect(clickSpy).toHaveBeenCalledOnce()
@@ -52,7 +53,7 @@ describe('exportGraphToFile', () => {
   })
 })
 
-describe('importGraphFromFile', () => {
+describe('importSaveDataFromFile', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
@@ -81,7 +82,7 @@ describe('importGraphFromFile', () => {
       },
     )
 
-    await expect(importGraphFromFile()).rejects.toThrow()
+    await expect(importSaveDataFromFile()).rejects.toThrow()
 
     vi.restoreAllMocks()
   })

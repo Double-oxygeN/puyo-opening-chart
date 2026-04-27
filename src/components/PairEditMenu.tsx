@@ -1,16 +1,13 @@
 import { useState } from 'react'
 import type { FilledColor } from '../domain/color'
 import type { PuyoPair } from '../domain/pair'
-import {
-  PuyoColor,
-  FILLED_COLORS,
-  COLOR_LABELS,
-  PUYO_BG_CLASSES,
-} from '../domain/color'
+import { PuyoColor, COLOR_LABELS, PUYO_BG_CLASSES } from '../domain/color'
 
 interface PairEditMenuProps {
   /** 現在の組ぷよ（null = 未設定、新規設定時のデフォルトを使う） */
   pair: PuyoPair | null
+  /** 選択可能な色の配列 */
+  availableColors: readonly FilledColor[]
   onConfirm: (pair: PuyoPair) => void
   /** クリアコールバック（設定されている場合のみ「クリア」ボタンを表示） */
   onClear?: () => void
@@ -46,6 +43,7 @@ function ColorButton({
 
 export default function PairEditMenu({
   pair,
+  availableColors,
   onConfirm,
   onClear,
   onCancel,
@@ -59,7 +57,7 @@ export default function PairEditMenu({
           子ぷよ
         </span>
         <div className="flex gap-2">
-          {FILLED_COLORS.map((color) => (
+          {availableColors.map((color) => (
             <ColorButton
               key={color}
               color={color}
@@ -74,7 +72,7 @@ export default function PairEditMenu({
           軸ぷよ
         </span>
         <div className="flex gap-2">
-          {FILLED_COLORS.map((color) => (
+          {availableColors.map((color) => (
             <ColorButton
               key={color}
               color={color}

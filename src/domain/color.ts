@@ -1,10 +1,11 @@
-/** ぷよの色（4色 + 空） */
+/** ぷよの色（5色 + 空） */
 export const PuyoColor = {
   Empty: 0,
   Red: 1,
   Green: 2,
   Blue: 3,
   Yellow: 4,
+  Purple: 5,
 } as const
 
 export type PuyoColor = (typeof PuyoColor)[keyof typeof PuyoColor]
@@ -18,6 +19,7 @@ export const FILLED_COLORS: readonly FilledColor[] = [
   PuyoColor.Green,
   PuyoColor.Blue,
   PuyoColor.Yellow,
+  PuyoColor.Purple,
 ] as const
 
 /** 色のCSS表示用ラベル */
@@ -27,6 +29,7 @@ export const COLOR_LABELS: Record<PuyoColor, string> = {
   [PuyoColor.Green]: '緑',
   [PuyoColor.Blue]: '青',
   [PuyoColor.Yellow]: '黄',
+  [PuyoColor.Purple]: '紫',
 } as const
 
 /** Tailwind BGクラス */
@@ -36,6 +39,7 @@ export const PUYO_BG_CLASSES: Record<PuyoColor, string> = {
   [PuyoColor.Green]: 'bg-green-500',
   [PuyoColor.Blue]: 'bg-blue-500',
   [PuyoColor.Yellow]: 'bg-yellow-400',
+  [PuyoColor.Purple]: 'bg-purple-500',
 } as const
 
 /** SVG用HEXカラー */
@@ -45,4 +49,5 @@ export const PUYO_HEX_COLORS: Record<PuyoColor, string> = {
   [PuyoColor.Green]: '#22c55e',
   [PuyoColor.Blue]: '#3b82f6',
   [PuyoColor.Yellow]: '#facc15',
+  [PuyoColor.Purple]: '#a855f7',
 } as const

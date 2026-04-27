@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { PuyoPair } from '../domain/pair'
+import type { FilledColor } from '../domain/color'
 import { PUYO_BG_CLASSES } from '../domain/color'
 import PairEditMenu from './PairEditMenu'
 
@@ -8,6 +9,8 @@ interface PairSlotProps {
   label: string
   /** 表示する組ぷよ（null = 未設定） */
   pair: PuyoPair | null
+  /** 選択可能な色の配列 */
+  availableColors: readonly FilledColor[]
   /** 色変更時のコールバック */
   onChangePair: (pair: PuyoPair) => void
   /** 空にするコールバック（ツモでは不要） */
@@ -21,6 +24,7 @@ interface PairSlotProps {
 export default function PairSlot({
   label,
   pair,
+  availableColors,
   onChangePair,
   onClear,
   editable = true,
@@ -91,6 +95,7 @@ export default function PairSlot({
         {isMenuOpen && (
           <PairEditMenu
             pair={pair}
+            availableColors={availableColors}
             onConfirm={handleConfirm}
             onClear={onClear ? handleClear : undefined}
             onCancel={handleCancel}

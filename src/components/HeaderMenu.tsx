@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import type { Difficulty } from '../domain/difficulty'
+import { ALL_DIFFICULTIES, DIFFICULTY_LABELS } from '../domain/difficulty'
 
 interface HeaderMenuProps {
+  difficulty: Difficulty
+  onChangeDifficulty: (difficulty: Difficulty) => void
   onExport: () => void
   onImport: () => void
   onReset: () => void
 }
 
 export default function HeaderMenu({
+  difficulty,
+  onChangeDifficulty,
   onExport,
   onImport,
   onReset,
@@ -59,6 +65,31 @@ export default function HeaderMenu({
 
       {isOpen && (
         <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-60">
+          <div className="px-4 py-2.5 border-b border-gray-100">
+            <span className="text-xs font-medium text-gray-500 block mb-1.5">
+              難易度
+            </span>
+            <div className="flex gap-1">
+              {ALL_DIFFICULTIES.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => {
+                    if (d !== difficulty) {
+                      onChangeDifficulty(d)
+                      setIsOpen(false)
+                    }
+                  }}
+                  className={`flex-1 px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
+                    d === difficulty
+                      ? 'bg-blue-500 text-white font-medium'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {DIFFICULTY_LABELS[d]}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={handleExport}
             className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer rounded-t-lg"
