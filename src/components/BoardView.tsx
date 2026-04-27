@@ -1,6 +1,13 @@
 import type { Board } from '../domain/board'
+import type { CellConnectivity } from '../domain/board'
 import type { PairState } from '../domain/pair'
-import { BOARD_COLS, BOARD_ROWS, DEAD_COL, DEAD_ROW } from '../domain/board'
+import {
+  BOARD_COLS,
+  BOARD_ROWS,
+  DEAD_COL,
+  DEAD_ROW,
+  computeConnectivityMap,
+} from '../domain/board'
 import { PuyoColor, PUYO_BG_CLASSES } from '../domain/color'
 import { getDropPreview, Rotation } from '../domain/pair'
 
@@ -8,6 +15,22 @@ interface BoardViewProps {
   board: Board
   pairState?: PairState | null
   compact?: boolean
+}
+
+/** 角丸半径（セルサイズに対する割合） */
+const CORNER_RADIUS_RATIO = 0.5
+
+/**
+ * 接続情報に基づいて CSS border-radius を計算する。
+ * 角に接する2辺がどちらも非接続の場合のみ角を丸くする。
+ */
+function computeBorderRadius(conn: CellConnectivity, radiusPx: number): string {
+  const r = `${radiusPx}px`
+  const tl = !conn.top && !conn.left ? r : '0'
+  const tr = !conn.top && !conn.right ? r : '0'
+  const br = !conn.bottom && !conn.right ? r : '0'
+  const bl = !conn.bottom && !conn.left ? r : '0'
+  return `${tl} ${tr} ${br} ${bl}`
 }
 
 /**
@@ -38,9 +61,11 @@ export default function BoardView({
   compact = false,
 }: BoardViewProps) {
   const preview = pairState ? getDropPreview(board, pairState) : null
+  const connectivityMap = computeConnectivityMap(board)
 
+  const cellSizePx = compact ? 12 : 32
   const cellSize = compact ? 'w-3 h-3' : 'w-8 h-8'
-  const gap = compact ? 'gap-px' : 'gap-0.5'
+  const radiusPx = cellSizePx * CORNER_RADIUS_RATIO
 
   // 表示は上から下へ（12段目→1段目）、13段目は非表示行として薄く表示
   const visibleRows = BOARD_ROWS // 13段全部表示（13段目は薄く）
@@ -50,11 +75,11 @@ export default function BoardView({
     !compact && pairState ? getPairDisplayCells(pairState) : null
 
   return (
-    <div className={`inline-flex flex-col ${gap}`}>
+    <div className="inline-flex flex-col">
       {/* ツモ操作状態の表示エリア（2行分） */}
       {pairCells && (
         <div
-          className={`inline-grid ${gap}`}
+          className="inline-grid"
           style={{
             gridTemplateColumns: `repeat(${BOARD_COLS}, minmax(0, 1fr))`,
           }}
@@ -84,7 +109,7 @@ export default function BoardView({
 
       {/* 盤面グリッド */}
       <div
-        className={`inline-grid ${gap}`}
+        className="inline-grid bg-gray-200"
         style={{
           gridTemplateColumns: `repeat(${BOARD_COLS}, minmax(0, 1fr))`,
         }}
@@ -96,6 +121,7 @@ export default function BoardView({
           return Array.from({ length: BOARD_COLS }, (_, col) => {
             const cell = board[row][col]
             const bgColor = PUYO_BG_CLASSES[cell]
+            const conn = connectivityMap[row][col]
 
             // 落下プレビュー
             let isPreview = false
@@ -114,22 +140,33 @@ export default function BoardView({
             }
 
             const isDeadZone = row === DEAD_ROW && col === DEAD_COL
+            const isEmpty = cell === PuyoColor.Empty
+            const borderRadius = isEmpty
+              ? undefined
+              : computeBorderRadius(conn, radiusPx)
 
             return (
               <div
                 key={`${row}-${col}`}
-                className={`
-                ${cellSize} rounded-full border
-                ${
-                  isPreview && cell === PuyoColor.Empty
-                    ? `${previewColor} opacity-40`
-                    : bgColor
-                }
-                ${isHiddenRow ? 'opacity-30' : ''}
-                ${isDeadZone && cell === PuyoColor.Empty ? 'border-red-400 border-2' : 'border-gray-300'}
-              `}
+                className={`${cellSize} relative ${bgColor} ${isHiddenRow ? 'opacity-30' : ''}`}
+                style={{
+                  borderRadius,
+                  ...(isDeadZone && isEmpty
+                    ? {
+                        outline: '2px solid #f87171',
+                        outlineOffset: '-2px',
+                      }
+                    : {}),
+                }}
                 aria-label={`${row + 1}段${col + 1}列`}
-              />
+              >
+                {/* 落下プレビュー（独立した丸表示） */}
+                {isPreview && isEmpty && (
+                  <div
+                    className={`absolute inset-0 rounded-full ${previewColor} opacity-40`}
+                  />
+                )}
+              </div>
             )
           })
         })}

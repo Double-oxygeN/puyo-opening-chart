@@ -82,6 +82,43 @@ export function expandBoard(rows: PuyoColorType[][]): Board {
   return board
 }
 
+// --- セル連結情報 ---
+
+/** セルの上下左右の連結状態 */
+export interface CellConnectivity {
+  readonly top: boolean
+  readonly right: boolean
+  readonly bottom: boolean
+  readonly left: boolean
+}
+
+const NO_CONNECTIVITY: CellConnectivity = {
+  top: false,
+  right: false,
+  bottom: false,
+  left: false,
+}
+
+/**
+ * 盤面全体の連結情報を計算する。
+ * 各セルについて、上下左右の隣接セルが同色（かつ空でない）かを判定する。
+ * 13段目（row 12）は非表示領域のため連結対象外とする。
+ */
+export function computeConnectivityMap(board: Board): CellConnectivity[][] {
+  const hiddenRow = BOARD_ROWS - 1
+  return board.map((row, r) =>
+    row.map((cell, c) => {
+      if (cell === PuyoColor.Empty || r >= hiddenRow) return NO_CONNECTIVITY
+      return {
+        top: r + 1 < hiddenRow && board[r + 1][c] === cell,
+        right: c < BOARD_COLS - 1 && board[r][c + 1] === cell,
+        bottom: r > 0 && board[r - 1][c] === cell,
+        left: c > 0 && board[r][c - 1] === cell,
+      }
+    }),
+  )
+}
+
 // --- 連鎖消去ロジック ---
 
 /** 同色連結グループ */

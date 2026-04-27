@@ -7,6 +7,7 @@ import {
   boardsEqual,
   compactBoard,
   expandBoard,
+  computeConnectivityMap,
   findConnectedGroups,
   eliminateGroups,
   applyGravity,
@@ -137,6 +138,148 @@ describe('compactBoard / expandBoard', () => {
     const board = createEmptyBoard()
     const expanded = expandBoard(compactBoard(board))
     expect(boardsEqual(board, expanded)).toBe(true)
+  })
+})
+
+describe('computeConnectivityMap', () => {
+  it('returns all false for an empty board', () => {
+    const board = createEmptyBoard()
+    const map = computeConnectivityMap(board)
+    for (let row = 0; row < BOARD_ROWS; row++) {
+      for (let col = 0; col < BOARD_COLS; col++) {
+        expect(map[row][col]).toEqual({
+          top: false,
+          right: false,
+          bottom: false,
+          left: false,
+        })
+      }
+    }
+  })
+
+  it('returns all false for a single isolated puyo', () => {
+    const board = setCell(createEmptyBoard(), 3, 2, PuyoColor.Red)
+    const map = computeConnectivityMap(board)
+    expect(map[3][2]).toEqual({
+      top: false,
+      right: false,
+      bottom: false,
+      left: false,
+    })
+  })
+
+  it('connects two horizontally adjacent same-color puyos', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 0, PuyoColor.Green)
+    board = setCell(board, 0, 1, PuyoColor.Green)
+    const map = computeConnectivityMap(board)
+
+    expect(map[0][0].right).toBe(true)
+    expect(map[0][0].left).toBe(false)
+    expect(map[0][1].left).toBe(true)
+    expect(map[0][1].right).toBe(false)
+  })
+
+  it('connects two vertically adjacent same-color puyos', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 0, PuyoColor.Blue)
+    board = setCell(board, 1, 0, PuyoColor.Blue)
+    const map = computeConnectivityMap(board)
+
+    expect(map[0][0].top).toBe(true)
+    expect(map[0][0].bottom).toBe(false)
+    expect(map[1][0].bottom).toBe(true)
+    expect(map[1][0].top).toBe(false)
+  })
+
+  it('does not connect two adjacent different-color puyos', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 0, 0, PuyoColor.Red)
+    board = setCell(board, 0, 1, PuyoColor.Blue)
+    const map = computeConnectivityMap(board)
+
+    expect(map[0][0].right).toBe(false)
+    expect(map[0][1].left).toBe(false)
+  })
+
+  it('computes correct connectivity for an L-shape', () => {
+    let board = createEmptyBoard()
+    // L字: row0: col0,col1 + row1: col0
+    board = setCell(board, 0, 0, PuyoColor.Yellow)
+    board = setCell(board, 0, 1, PuyoColor.Yellow)
+    board = setCell(board, 1, 0, PuyoColor.Yellow)
+    const map = computeConnectivityMap(board)
+
+    // 左下 (row=0, col=0): 上=同色, 右=同色, 下=なし, 左=なし
+    expect(map[0][0]).toEqual({
+      top: true,
+      right: true,
+      bottom: false,
+      left: false,
+    })
+    // 右下 (row=0, col=1): 上=なし, 右=なし, 下=なし, 左=同色
+    expect(map[0][1]).toEqual({
+      top: false,
+      right: false,
+      bottom: false,
+      left: true,
+    })
+    // 左上 (row=1, col=0): 上=なし, 右=なし, 下=同色, 左=なし
+    expect(map[1][0]).toEqual({
+      top: false,
+      right: false,
+      bottom: true,
+      left: false,
+    })
+  })
+
+  it('excludes row 12 (13段目) from connectivity', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 11, 0, PuyoColor.Red)
+    board = setCell(board, 12, 0, PuyoColor.Red)
+    const map = computeConnectivityMap(board)
+
+    // 12段目は13段目と連結しない
+    expect(map[11][0].top).toBe(false)
+    // 13段目は常に連結なし
+    expect(map[12][0]).toEqual({
+      top: false,
+      right: false,
+      bottom: false,
+      left: false,
+    })
+  })
+
+  it('excludes connectivity between cells within row 12 (13段目)', () => {
+    let board = createEmptyBoard()
+    board = setCell(board, 12, 0, PuyoColor.Red)
+    board = setCell(board, 12, 1, PuyoColor.Red)
+    const map = computeConnectivityMap(board)
+
+    expect(map[12][0]).toEqual({
+      top: false,
+      right: false,
+      bottom: false,
+      left: false,
+    })
+    expect(map[12][1]).toEqual({
+      top: false,
+      right: false,
+      bottom: false,
+      left: false,
+    })
+  })
+
+  it('does not connect empty cells even if adjacent', () => {
+    // 空セルは隣接していても接続しない
+    const board = createEmptyBoard()
+    const map = computeConnectivityMap(board)
+    expect(map[0][0]).toEqual({
+      top: false,
+      right: false,
+      bottom: false,
+      left: false,
+    })
   })
 })
 
