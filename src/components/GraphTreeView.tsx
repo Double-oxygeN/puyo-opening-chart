@@ -12,6 +12,7 @@ interface GraphTreeViewProps {
 
 interface TreeLayout {
   nodePositions: Map<NodeId, { x: number; y: number }>
+  nodeDepths: Map<NodeId, number>
   width: number
   height: number
 }
@@ -24,11 +25,14 @@ const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8
 const DEPTH_GAP = 48
 /** 兄弟方向（上→下）のノード間隔 */
 const SIBLING_GAP = 10
+/** 矢印マーカーのサイズ */
+const ARROW_SIZE = 8
 
 function computeTreeLayout(graph: Graph): TreeLayout {
   const positions = new Map<NodeId, { x: number; y: number }>()
+  const nodeDepths = new Map<NodeId, number>()
   if (graph.nodes.length === 0)
-    return { nodePositions: positions, width: 0, height: 0 }
+    return { nodePositions: positions, nodeDepths, width: 0, height: 0 }
 
   const root = graph.nodes[0]
   const childrenMap = new Map<NodeId, NodeId[]>()
@@ -49,6 +53,7 @@ function computeTreeLayout(graph: Graph): TreeLayout {
     const { id, depth } = queue.shift()!
     if (!levels[depth]) levels[depth] = []
     levels[depth].push(id)
+    nodeDepths.set(id, depth)
 
     const children = childrenMap.get(id) ?? []
     for (const childId of children) {
@@ -77,7 +82,12 @@ function computeTreeLayout(graph: Graph): TreeLayout {
   }
 
   const width = levels.length * (NODE_WIDTH + DEPTH_GAP)
-  return { nodePositions: positions, width, height: maxHeight + NODE_HEIGHT }
+  return {
+    nodePositions: positions,
+    nodeDepths,
+    width,
+    height: maxHeight + NODE_HEIGHT,
+  }
 }
 
 /** エッジ上に組ぷよペアを1つ描画する（子ぷよ上・軸ぷよ下） */
@@ -131,6 +141,64 @@ function EdgeLabel({
   )
 }
 
+/** 戻りエッジかどうかを判定する（toの深さ ≤ fromの深さ） */
+function isBackEdge(edge: GraphEdge, nodeDepths: Map<NodeId, number>): boolean {
+  const fromDepth = nodeDepths.get(edge.from) ?? 0
+  const toDepth = nodeDepths.get(edge.to) ?? 0
+  return toDepth <= fromDepth
+}
+
+/** 順方向エッジのパスデータを生成する（直線） */
+function forwardEdgePath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): { d: string; midX: number; midY: number } {
+  const x1 = from.x + NODE_WIDTH / 2
+  const y1 = from.y
+  const x2 = to.x - NODE_WIDTH / 2 - ARROW_SIZE
+  const y2 = to.y
+  return {
+    d: `M ${x1} ${y1} L ${x2} ${y2}`,
+    midX: (x1 + x2) / 2,
+    midY: y1 + (y2 - y1) * 0.5,
+  }
+}
+
+/** 戻りエッジのパスデータを生成する（下方向に迂回する曲線） */
+function backEdgePath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  layoutHeight: number,
+): { d: string; midX: number; midY: number } {
+  const x1 = from.x
+  const y1 = from.y + NODE_HEIGHT / 2
+  const x2 = to.x
+  const y2 = to.y + NODE_HEIGHT / 2
+
+  // 曲線の下方向オフセット: 水平距離と垂直距離に比例
+  const dx = Math.abs(x1 - x2)
+  const curveOffset = Math.max(NODE_HEIGHT, dx * 0.25 + 40)
+  const bottomY = Math.max(y1, y2) + curveOffset
+
+  // 下辺を超えないように制限（layoutHeightの半分 + マージン）
+  const clampedBottomY = Math.min(bottomY, layoutHeight / 2 + 30)
+
+  const cp1x = x1
+  const cp1y = clampedBottomY
+  const cp2x = x2
+  const cp2y = clampedBottomY
+
+  // 3次ベジェ曲線の中間点（t=0.5）
+  const midX = (x1 + 3 * cp1x + 3 * cp2x + x2) / 8
+  const midY = (y1 + 3 * cp1y + 3 * cp2y + y2) / 8
+
+  return {
+    d: `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`,
+    midX,
+    midY,
+  }
+}
+
 export default function GraphTreeView({
   graph,
   selectedNodeId,
@@ -138,9 +206,10 @@ export default function GraphTreeView({
 }: GraphTreeViewProps) {
   const layout = computeTreeLayout(graph)
   const padding = 40
+  const backEdgePadding = 60
 
   const svgWidth = Math.max(layout.width + padding * 2, 200)
-  const svgHeight = Math.max(layout.height + padding * 2, 200)
+  const svgHeight = Math.max(layout.height + padding * 2 + backEdgePadding, 200)
 
   return (
     <div className="overflow-auto h-full">
@@ -149,24 +218,57 @@ export default function GraphTreeView({
         height={svgHeight}
         viewBox={`0 ${-svgHeight / 2} ${svgWidth} ${svgHeight}`}
       >
-        {/* エッジ */}
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth={ARROW_SIZE}
+            markerHeight={ARROW_SIZE}
+            refX={ARROW_SIZE}
+            refY={ARROW_SIZE / 2}
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <polygon
+              points={`0 0, ${ARROW_SIZE} ${ARROW_SIZE / 2}, 0 ${ARROW_SIZE}`}
+              fill="#9ca3af"
+            />
+          </marker>
+          <marker
+            id="arrowhead-back"
+            markerWidth={ARROW_SIZE}
+            markerHeight={ARROW_SIZE}
+            refX={ARROW_SIZE}
+            refY={ARROW_SIZE / 2}
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <polygon
+              points={`0 0, ${ARROW_SIZE} ${ARROW_SIZE / 2}, 0 ${ARROW_SIZE}`}
+              fill="#d1d5db"
+            />
+          </marker>
+        </defs>
+
+        {/* エッジ（ノードの奥に描画） */}
         {graph.edges.map((edge) => {
           const from = layout.nodePositions.get(edge.from)
           const to = layout.nodePositions.get(edge.to)
           if (!from || !to) return null
 
-          const midX = (from.x + NODE_WIDTH / 2 + to.x - NODE_WIDTH / 2) / 2
-          const midY = from.y + (to.y - from.y) * 0.5
+          const isBack = isBackEdge(edge, layout.nodeDepths)
+          const { d, midX, midY } = isBack
+            ? backEdgePath(from, to, layout.height)
+            : forwardEdgePath(from, to)
 
           return (
             <g key={edge.id}>
-              <line
-                x1={from.x + NODE_WIDTH / 2}
-                y1={from.y}
-                x2={to.x - NODE_WIDTH / 2}
-                y2={to.y}
-                stroke="#9ca3af"
+              <path
+                d={d}
+                stroke={isBack ? '#d1d5db' : '#9ca3af'}
                 strokeWidth={2}
+                fill="none"
+                strokeDasharray={isBack ? '6 3' : undefined}
+                markerEnd={isBack ? 'url(#arrowhead-back)' : 'url(#arrowhead)'}
               />
               <EdgeLabel edge={edge} midX={midX} midY={midY} />
             </g>

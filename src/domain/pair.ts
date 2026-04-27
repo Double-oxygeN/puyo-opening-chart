@@ -1,6 +1,12 @@
 import type { FilledColor } from './color'
 import type { Board } from './board'
-import { BOARD_COLS, BOARD_ROWS, getDropRow, setCell } from './board'
+import {
+  BOARD_COLS,
+  BOARD_ROWS,
+  getDropRow,
+  setCell,
+  resolveChains,
+} from './board'
 
 /** 組ぷよ: 軸ぷよと子ぷよの色 */
 export interface PuyoPair {
@@ -131,12 +137,14 @@ export function placePair(board: Board, state: PairState): Board | null {
       // 子ぷよが上: 軸が先に落ち、その上に子ぷよ
       if (dropRow + 1 >= BOARD_ROWS) return null
       const b1 = setCell(board, dropRow, state.col, state.pair.axis)
-      return setCell(b1, dropRow + 1, state.col, state.pair.child)
+      const b2 = setCell(b1, dropRow + 1, state.col, state.pair.child)
+      return resolveChains(b2)
     } else {
       // 子ぷよが下: 子ぷよが先に落ち、その上に軸
       if (dropRow + 1 >= BOARD_ROWS) return null
       const b1 = setCell(board, dropRow, state.col, state.pair.child)
-      return setCell(b1, dropRow + 1, state.col, state.pair.axis)
+      const b2 = setCell(b1, dropRow + 1, state.col, state.pair.axis)
+      return resolveChains(b2)
     }
   } else {
     // 横向き: 別の列に落とす（ちぎり）
@@ -145,7 +153,8 @@ export function placePair(board: Board, state: PairState): Board | null {
     if (axisDropRow < 0 || childDropRow < 0) return null
 
     const b1 = setCell(board, axisDropRow, state.col, state.pair.axis)
-    return setCell(b1, childDropRow, childCol, state.pair.child)
+    const b2 = setCell(b1, childDropRow, childCol, state.pair.child)
+    return resolveChains(b2)
   }
 }
 

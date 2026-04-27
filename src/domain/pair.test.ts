@@ -11,7 +11,13 @@ import {
   INITIAL_COL,
 } from './pair'
 import { PuyoColor } from './color'
-import { createEmptyBoard, getCell, setCell, BOARD_COLS } from './board'
+import {
+  createEmptyBoard,
+  getCell,
+  setCell,
+  boardsEqual,
+  BOARD_COLS,
+} from './board'
 
 const RED_BLUE = { axis: PuyoColor.Red, child: PuyoColor.Blue } as const
 
@@ -190,6 +196,50 @@ describe('placePair', () => {
 
     const state = createInitialPairState(RED_BLUE)
     expect(placePair(board, state)).toBeNull()
+  })
+
+  it('resolves chains after placement (4 connected → elimination)', () => {
+    let board = createEmptyBoard()
+    // col2 に赤2つ積んでおく
+    board = setCell(board, 0, 2, PuyoColor.Red)
+    board = setCell(board, 1, 2, PuyoColor.Red)
+
+    // 赤赤の縦ペアを配置 → 赤4連結 → 消去
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    const state = createInitialPairState(pair) // col=2, Up
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+    // 赤4つが消えて空盤面になる
+    expect(boardsEqual(result!, createEmptyBoard())).toBe(true)
+  })
+
+  it('resolves multi-chain after placement', () => {
+    let board = createEmptyBoard()
+    // row0: col0-2に青, row1: col0-2に赤
+    board = setCell(board, 0, 0, PuyoColor.Blue)
+    board = setCell(board, 0, 1, PuyoColor.Blue)
+    board = setCell(board, 0, 2, PuyoColor.Blue)
+    board = setCell(board, 1, 0, PuyoColor.Red)
+    board = setCell(board, 1, 1, PuyoColor.Red)
+    board = setCell(board, 1, 2, PuyoColor.Red)
+
+    // 赤赤ペアをcol3に縦置き（赤が下、赤が上）
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    const state = { pair, col: 3, rotation: Rotation.Up }
+    const result = placePair(board, state)
+    expect(result).not.toBeNull()
+
+    // 配置後: row0: B,B,B,R(axis) row1: R,R,R,R(child) → 赤5連結消去
+    // 落下後: row0: B,B,B,_ → 青3つだけ残る
+
+    expect(getCell(result!, 0, 0)).toBe(PuyoColor.Blue)
+    expect(getCell(result!, 0, 1)).toBe(PuyoColor.Blue)
+    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Blue)
+    expect(getCell(result!, 0, 3)).toBe(PuyoColor.Empty)
+    expect(getCell(result!, 1, 0)).toBe(PuyoColor.Empty)
+    expect(getCell(result!, 1, 1)).toBe(PuyoColor.Empty)
+    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Empty)
+    expect(getCell(result!, 1, 3)).toBe(PuyoColor.Empty)
   })
 })
 
