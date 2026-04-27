@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { PuyoColor } from './domain/color'
 import type { PuyoPair, PairState } from './domain/pair'
 import { createInitialPairState } from './domain/pair'
+import { isDead } from './domain/board'
 import { useGraph } from './hooks/useGraph'
 import { exportGraphToFile, importGraphFromFile } from './hooks/useGraphStorage'
 import type { NodeId } from './domain/graph'
@@ -175,6 +176,7 @@ function App() {
   }, [importGraph])
 
   const currentBoard = selectedNode?.board
+  const currentBoardDead = currentBoard ? isDead(currentBoard) : false
 
   if (loading) {
     return (
@@ -227,6 +229,7 @@ function App() {
           onClearNextNext={handleClearNextNext}
           pairEditable={lockedPair === null}
           nextEditable={lockedNext === null}
+          dead={currentBoardDead}
           memo={selectedNode?.memo ?? ''}
           onSaveMemo={handleSaveMemo}
           onDeleteNode={

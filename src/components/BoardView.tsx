@@ -1,6 +1,6 @@
 import type { Board } from '../domain/board'
 import type { PairState } from '../domain/pair'
-import { BOARD_COLS, BOARD_ROWS } from '../domain/board'
+import { BOARD_COLS, BOARD_ROWS, DEAD_COL, DEAD_ROW } from '../domain/board'
 import { PuyoColor, PUYO_BG_CLASSES } from '../domain/color'
 import { getDropPreview, Rotation } from '../domain/pair'
 
@@ -113,8 +113,7 @@ export default function BoardView({
               }
             }
 
-            // 窒息ライン: 3列目(index=2)の12段目(index=11)
-            const isDeadZone = row === 11 && col === 2
+            const isDeadZone = row === DEAD_ROW && col === DEAD_COL
 
             return (
               <div

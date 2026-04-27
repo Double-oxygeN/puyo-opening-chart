@@ -6,6 +6,10 @@ export const BOARD_COLS = 6
 export const BOARD_ROWS = 13 // 12段 + 非表示の13段目
 /** 連結判定の対象行数（12段目まで。13段目は対象外） */
 export const VISIBLE_ROWS = 12
+/** 窒息判定の列（3列目、0始まり） */
+export const DEAD_COL = 2
+/** 窒息判定の行（12段目、0始まり） */
+export const DEAD_ROW = 11
 
 /** 盤面: 行(段)×列の2次元配列。[row][col] でアクセス。row=0 が1段目（最下段） */
 export type Board = PuyoColorType[][]
@@ -182,4 +186,9 @@ export function resolveChains(board: Board): Board {
     if (groups.length === 0) return current
     current = applyGravity(eliminateGroups(current, groups))
   }
+}
+
+/** 盤面が窒息状態かどうかを判定する。3列目12段目が埋まっていれば窒息 */
+export function isDead(board: Board): boolean {
+  return board[DEAD_ROW][DEAD_COL] !== PuyoColor.Empty
 }

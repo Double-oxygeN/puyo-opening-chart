@@ -17,7 +17,7 @@ import {
   validateGraph,
 } from './graph'
 import type { NodeId } from './graph'
-import { createEmptyBoard, setCell } from './board'
+import { createEmptyBoard, setCell, DEAD_COL, DEAD_ROW } from './board'
 import { PuyoColor } from './color'
 import { Rotation } from './pair'
 import { placePair } from './pair'
@@ -768,6 +768,39 @@ describe('validateGraph', () => {
       2,
       Rotation.Up,
     )
+
+    expect(validateGraph(graph)).toBe(false)
+  })
+
+  it('rejects a graph with an edge from a dead (suffocated) node', () => {
+    // 窒息盤面を作成（3列目12段目が埋まっている）
+    let deadBoard = createEmptyBoard()
+    for (let row = 0; row <= DEAD_ROW; row++) {
+      deadBoard = setCell(
+        deadBoard,
+        row,
+        DEAD_COL,
+        row % 2 === 0 ? PuyoColor.Red : PuyoColor.Green,
+      )
+    }
+
+    // 窒息盤面からさらに先に遷移するエッジを持つグラフ
+    let graph = createInitialGraph()
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    const [g1, deadNode] = addNode(graph, deadBoard)
+    const nextBoard = setCell(deadBoard, 0, 0, PuyoColor.Blue)
+    const [g2, nextNode] = addNode(g1, nextBoard)
+    // ルート → 窒息ノード
+    graph = addEdge(
+      g2,
+      'node-0' as NodeId,
+      deadNode.id,
+      pair,
+      DEAD_COL,
+      Rotation.Up,
+    )
+    // 窒息ノード → 次のノード（これは不正）
+    graph = addEdge(graph, deadNode.id, nextNode.id, pair, 0, Rotation.Up)
 
     expect(validateGraph(graph)).toBe(false)
   })

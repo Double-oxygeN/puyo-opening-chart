@@ -5,6 +5,7 @@ import { PuyoColor } from '../domain/color'
 import { Rotation } from '../domain/pair'
 import type { PairState, PuyoPair } from '../domain/pair'
 import type { NodeId } from '../domain/graph'
+import { DEAD_COL } from '../domain/board'
 
 const RED_RED = { axis: PuyoColor.Red, child: PuyoColor.Red } as const
 const RED_BLUE = { axis: PuyoColor.Red, child: PuyoColor.Blue } as const
@@ -431,5 +432,40 @@ describe('useGraph', () => {
     })
     expect(result.current.graph.nodes).toHaveLength(1)
     expect(result.current.selectedNodeId).toBe('node-0')
+  })
+
+  it('rejects placement on a dead (suffocated) board', () => {
+    const { result } = renderHook(() => useGraph())
+
+    // 3列目を12段目まで積み上げて窒息状態にする
+    // 同色4連鎖を避けるため、2色を交互に配置
+    const pairs: PuyoPair[] = [
+      { axis: PuyoColor.Red, child: PuyoColor.Red },
+      { axis: PuyoColor.Blue, child: PuyoColor.Blue },
+      { axis: PuyoColor.Red, child: PuyoColor.Red },
+      { axis: PuyoColor.Blue, child: PuyoColor.Blue },
+      { axis: PuyoColor.Red, child: PuyoColor.Red },
+      { axis: PuyoColor.Blue, child: PuyoColor.Blue },
+    ]
+
+    for (const pair of pairs) {
+      let success: boolean
+      act(() => {
+        success = result.current.placeAndAddNode(
+          makePairState(pair, DEAD_COL, Rotation.Up),
+        )
+      })
+      expect(success!).toBe(true)
+    }
+
+    // 現在のノードの盤面は3列目が12段全部埋まっている → 窒息
+    // 他の列に置こうとしても拒否される
+    let success: boolean
+    act(() => {
+      success = result.current.placeAndAddNode(
+        makePairState(RED_RED, 0, Rotation.Up),
+      )
+    })
+    expect(success!).toBe(false)
   })
 })

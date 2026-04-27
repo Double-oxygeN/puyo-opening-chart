@@ -24,6 +24,8 @@ interface BoardOperationDialogProps {
   pairEditable: boolean
   /** ネクストの編集が可能か */
   nextEditable: boolean
+  /** 盤面が窒息状態か */
+  dead: boolean
   /** ノードのメモ */
   memo: string
   onSaveMemo: (memo: string) => void
@@ -46,6 +48,7 @@ export default function BoardOperationDialog({
   onClearNextNext,
   pairEditable,
   nextEditable,
+  dead,
   memo,
   onSaveMemo,
   onDeleteNode,
@@ -72,39 +75,50 @@ export default function BoardOperationDialog({
 
         <div className="flex gap-6">
           {/* 盤面表示 */}
-          <BoardView board={board} pairState={pairState} />
+          <BoardView board={board} pairState={dead ? null : pairState} />
 
-          {/* 組ぷよ編集領域 */}
-          <div className="flex flex-col items-center gap-4">
-            <PairSlot
-              label="ツモ"
-              pair={pair}
-              onChangePair={onChangePair}
-              editable={pairEditable}
-            />
-            <PairSlot
-              label="ネクスト"
-              pair={next}
-              onChangePair={onChangeNext}
-              onClear={onClearNext}
-              editable={nextEditable}
-            />
-            <PairSlot
-              label="ネクネク"
-              pair={nextNext}
-              onChangePair={onChangeNextNext}
-              onClear={onClearNextNext}
-              disabled={next === null}
-            />
-          </div>
+          {/* 組ぷよ編集領域（窒息時は非表示） */}
+          {!dead && (
+            <div className="flex flex-col items-center gap-4">
+              <PairSlot
+                label="ツモ"
+                pair={pair}
+                onChangePair={onChangePair}
+                editable={pairEditable}
+              />
+              <PairSlot
+                label="ネクスト"
+                pair={next}
+                onChangePair={onChangeNext}
+                onClear={onClearNext}
+                editable={nextEditable}
+              />
+              <PairSlot
+                label="ネクネク"
+                pair={nextNext}
+                onChangePair={onChangeNextNext}
+                onClear={onClearNextNext}
+                disabled={next === null}
+              />
+            </div>
+          )}
         </div>
 
-        {/* 操作説明 */}
-        <PairController
-          pairState={pairState}
-          onUpdatePairState={onUpdatePairState}
-          onPlace={onPlace}
-        />
+        {/* 窒息メッセージ */}
+        {dead && (
+          <p className="text-sm font-medium text-red-500 text-center">
+            ばたんきゅ〜
+          </p>
+        )}
+
+        {/* 操作説明（窒息時は非表示） */}
+        {!dead && (
+          <PairController
+            pairState={pairState}
+            onUpdatePairState={onUpdatePairState}
+            onPlace={onPlace}
+          />
+        )}
 
         {/* メモ */}
         <div className="flex flex-col gap-1">

@@ -6,6 +6,7 @@ import {
   boardsEqual,
   compactBoard,
   expandBoard,
+  isDead,
 } from './board'
 import { placePair } from './pair'
 
@@ -310,6 +311,9 @@ export function validateGraph(graph: Graph): boolean {
     const fromNode = nodeMap.get(edge.from)
     const toNode = nodeMap.get(edge.to)
     if (!fromNode || !toNode) return false
+
+    // 窒息状態のノードからは遷移できない
+    if (isDead(fromNode.board)) return false
 
     const pairState = {
       pair: edge.pair,

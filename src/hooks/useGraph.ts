@@ -14,6 +14,7 @@ import {
   validateGraph,
 } from '../domain/graph'
 import { placePair } from '../domain/pair'
+import { isDead } from '../domain/board'
 import type { PairState, PuyoPair } from '../domain/pair'
 import { loadGraph, saveGraph, clearGraph } from './useGraphStorage'
 
@@ -48,6 +49,7 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         (n) => n.id === state.selectedNodeId,
       )
       if (!currentNode) return state
+      if (isDead(currentNode.board)) return state
 
       const newBoard = placePair(currentNode.board, action.pairState)
       if (!newBoard) return state
@@ -256,6 +258,7 @@ export function useGraph(): UseGraphReturn {
         (n) => n.id === state.selectedNodeId,
       )
       if (!currentNode) return false
+      if (isDead(currentNode.board)) return false
       if (placePair(currentNode.board, pairState) === null) return false
 
       dispatch({ type: 'placeAndAddNode', pairState, next, nextNext })

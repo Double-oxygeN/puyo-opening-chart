@@ -11,8 +11,11 @@ import {
   eliminateGroups,
   applyGravity,
   resolveChains,
+  isDead,
   BOARD_COLS,
   BOARD_ROWS,
+  DEAD_COL,
+  DEAD_ROW,
 } from './board'
 import { PuyoColor } from './color'
 
@@ -621,5 +624,24 @@ describe('resolveChains', () => {
 
     const result = resolveChains(board)
     expect(boardsEqual(result, createEmptyBoard())).toBe(true)
+  })
+})
+
+describe('isDead', () => {
+  it('returns false for an empty board', () => {
+    expect(isDead(createEmptyBoard())).toBe(false)
+  })
+
+  it('returns true when column 3 row 12 is occupied', () => {
+    const board = setCell(createEmptyBoard(), DEAD_ROW, DEAD_COL, PuyoColor.Red)
+    expect(isDead(board)).toBe(true)
+  })
+
+  it('returns false when column 3 is filled up to row 11 (row 12 is empty)', () => {
+    let board = createEmptyBoard()
+    for (let row = 0; row < DEAD_ROW; row++) {
+      board = setCell(board, row, DEAD_COL, PuyoColor.Green)
+    }
+    expect(isDead(board)).toBe(false)
   })
 })
