@@ -71,7 +71,7 @@ describe('App', () => {
     })
   })
 
-  it('shows random next toggle in header menu', async () => {
+  it('shows random tsumo toggle in header menu with default ON', async () => {
     const user = userEvent.setup()
     render(<App />)
     await waitFor(() => {
@@ -82,15 +82,32 @@ describe('App', () => {
 
     await user.click(screen.getByText('メニュー ▾'))
 
-    // ランダムツモとランダムネクストの両方が表示される
     expect(screen.getByText('ランダムツモ')).toBeInTheDocument()
+
+    // ランダムツモのトグルは既定でON
+    const randomTsumoToggle = screen.getByRole('switch', {
+      name: 'ランダムツモ',
+    })
+    expect(randomTsumoToggle).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('shows random next toggle in header menu with default OFF', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(
+        screen.getByText('ぷよぷよ通 初手研究チャート'),
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('メニュー ▾'))
+
     expect(screen.getByText('ランダムネクスト')).toBeInTheDocument()
 
     // ランダムネクストのトグルは既定でOFF
-    const randomNextToggle = screen
-      .getByText('ランダムネクスト')
-      .closest('div')!
-      .querySelector('button[role="switch"]')!
+    const randomNextToggle = screen.getByRole('switch', {
+      name: 'ランダムネクスト',
+    })
     expect(randomNextToggle).toHaveAttribute('aria-checked', 'false')
   })
 })
