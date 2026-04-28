@@ -14,7 +14,7 @@ function buildTestGraph() {
     pair,
     col: 0,
     rotation: Rotation.Up,
-  })!
+  })!.board
   const [g2, node] = addNode(graph, board)
   graph = addEdge(g2, 'node-0' as NodeId, node.id, pair, 0, Rotation.Up)
   return graph

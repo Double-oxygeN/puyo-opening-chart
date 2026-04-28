@@ -18,6 +18,7 @@ import { isDead } from '../domain/board'
 import type { PairState, PuyoPair } from '../domain/pair'
 import type { Difficulty } from '../domain/difficulty'
 import { DEFAULT_DIFFICULTY } from '../domain/difficulty'
+import { formatChainNotation } from '../domain/chain'
 import { loadSaveData, saveSaveData, clearGraph } from './useGraphStorage'
 
 interface GraphState {
@@ -54,8 +55,11 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
       if (!currentNode) return state
       if (isDead(currentNode.board)) return state
 
-      const newBoard = placePair(currentNode.board, action.pairState)
-      if (!newBoard) return state
+      const placeResult = placePair(currentNode.board, action.pairState)
+      if (!placeResult) return state
+
+      const { board: newBoard, chainResult } = placeResult
+      const chainNotation = formatChainNotation(chainResult) ?? undefined
 
       // 同一辺（ツモ・ネクスト・ネクネクが一致）を検索
       const existingEdge = findMatchingEdge(
@@ -142,7 +146,6 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           return { ...state, selectedNodeId: mergeableNode.id }
         }
 
-        // 異なる親からの合流: エッジのみ追加
         const graphWithEdge = addEdge(
           state.graph,
           state.selectedNodeId,
@@ -152,6 +155,7 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           action.pairState.rotation,
           action.next,
           action.nextNext,
+          chainNotation,
         )
         return {
           ...state,
@@ -174,6 +178,7 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         action.pairState.rotation,
         action.next,
         action.nextNext,
+        chainNotation,
       )
 
       return { ...state, graph: graphWithEdge, selectedNodeId: newNode.id }

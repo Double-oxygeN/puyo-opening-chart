@@ -22,9 +22,9 @@ const THUMBNAIL_WIDTH = Math.ceil((THUMBNAIL_HEIGHT / BOARD_ROWS) * BOARD_COLS)
 const NODE_WIDTH = THUMBNAIL_WIDTH + 8
 const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8
 /** 深さ方向（左→右）のノード間隔 */
-const DEPTH_GAP = 48
+const DEPTH_GAP = 96
 /** 兄弟方向（上→下）のノード間隔 */
-const SIBLING_GAP = 10
+const SIBLING_GAP = 36
 /** 矢印マーカーのサイズ */
 const ARROW_SIZE = 8
 
@@ -114,7 +114,7 @@ function renderPairCircles(pair: PuyoPair, cx: number, cy: number) {
   )
 }
 
-/** エッジラベル: 1〜3組の組ぷよを横に並べて描画 */
+/** エッジラベル: 1〜3組の組ぷよを横に並べて描画 + 連鎖情報 */
 function EdgeLabel({
   edge,
   midX,
@@ -136,6 +136,28 @@ function EdgeLabel({
     <>
       {pairs.map((pair, i) =>
         renderPairCircles(pair, startX + i * pairSpacing, midY),
+      )}
+      {edge.chainNotation && (
+        <>
+          <rect
+            x={midX - edge.chainNotation.length * 3 - 2}
+            y={midY + 12}
+            width={edge.chainNotation.length * 6 + 4}
+            height={12}
+            rx={2}
+            fill="rgba(255,255,255,0.85)"
+          />
+          <text
+            x={midX}
+            y={midY + 22}
+            textAnchor="middle"
+            fontSize={9}
+            fontWeight="bold"
+            fill="#374151"
+          >
+            {edge.chainNotation}
+          </text>
+        </>
       )}
     </>
   )

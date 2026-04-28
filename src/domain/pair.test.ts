@@ -133,8 +133,8 @@ describe('placePair', () => {
     expect(result).not.toBeNull()
 
     // axis (Red) at row 0, child (Blue) at row 1
-    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Red)
-    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Blue)
+    expect(getCell(result!.board, 0, 2)).toBe(PuyoColor.Red)
+    expect(getCell(result!.board, 1, 2)).toBe(PuyoColor.Blue)
   })
 
   it('places on top of existing puyos', () => {
@@ -145,9 +145,9 @@ describe('placePair', () => {
     const result = placePair(board, state)
     expect(result).not.toBeNull()
 
-    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Green) // existing
-    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Red) // axis
-    expect(getCell(result!, 2, 2)).toBe(PuyoColor.Blue) // child
+    expect(getCell(result!.board, 0, 2)).toBe(PuyoColor.Green) // existing
+    expect(getCell(result!.board, 1, 2)).toBe(PuyoColor.Red) // axis
+    expect(getCell(result!.board, 2, 2)).toBe(PuyoColor.Blue) // child
   })
 
   it('places horizontal pair in separate columns', () => {
@@ -158,8 +158,8 @@ describe('placePair', () => {
     const result = placePair(board, state)
     expect(result).not.toBeNull()
 
-    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Red) // axis at col 2
-    expect(getCell(result!, 0, 3)).toBe(PuyoColor.Blue) // child at col 3
+    expect(getCell(result!.board, 0, 2)).toBe(PuyoColor.Red) // axis at col 2
+    expect(getCell(result!.board, 0, 3)).toBe(PuyoColor.Blue) // child at col 3
   })
 
   it('handles chigiiri (different heights)', () => {
@@ -173,8 +173,8 @@ describe('placePair', () => {
     expect(result).not.toBeNull()
 
     // axis drops to row 1 (on top of Green), child drops to row 0
-    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Red)
-    expect(getCell(result!, 0, 3)).toBe(PuyoColor.Blue)
+    expect(getCell(result!.board, 1, 2)).toBe(PuyoColor.Red)
+    expect(getCell(result!.board, 0, 3)).toBe(PuyoColor.Blue)
   })
 
   it('places pair with child below (rotation Down)', () => {
@@ -186,8 +186,8 @@ describe('placePair', () => {
     expect(result).not.toBeNull()
 
     // child (Blue) below, axis (Red) above
-    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Blue) // child first
-    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Red) // axis on top
+    expect(getCell(result!.board, 0, 2)).toBe(PuyoColor.Blue) // child first
+    expect(getCell(result!.board, 1, 2)).toBe(PuyoColor.Red) // axis on top
   })
 
   it('returns null when column is full', () => {
@@ -212,7 +212,7 @@ describe('placePair', () => {
     const result = placePair(board, state)
     expect(result).not.toBeNull()
     // 赤4つが消えて空盤面になる
-    expect(boardsEqual(result!, createEmptyBoard())).toBe(true)
+    expect(boardsEqual(result!.board, createEmptyBoard())).toBe(true)
   })
 
   it('resolves multi-chain after placement', () => {
@@ -234,14 +234,14 @@ describe('placePair', () => {
     // 配置後: row0: B,B,B,R(axis) row1: R,R,R,R(child) → 赤5連結消去
     // 落下後: row0: B,B,B,_ → 青3つだけ残る
 
-    expect(getCell(result!, 0, 0)).toBe(PuyoColor.Blue)
-    expect(getCell(result!, 0, 1)).toBe(PuyoColor.Blue)
-    expect(getCell(result!, 0, 2)).toBe(PuyoColor.Blue)
-    expect(getCell(result!, 0, 3)).toBe(PuyoColor.Empty)
-    expect(getCell(result!, 1, 0)).toBe(PuyoColor.Empty)
-    expect(getCell(result!, 1, 1)).toBe(PuyoColor.Empty)
-    expect(getCell(result!, 1, 2)).toBe(PuyoColor.Empty)
-    expect(getCell(result!, 1, 3)).toBe(PuyoColor.Empty)
+    expect(getCell(result!.board, 0, 0)).toBe(PuyoColor.Blue)
+    expect(getCell(result!.board, 0, 1)).toBe(PuyoColor.Blue)
+    expect(getCell(result!.board, 0, 2)).toBe(PuyoColor.Blue)
+    expect(getCell(result!.board, 0, 3)).toBe(PuyoColor.Empty)
+    expect(getCell(result!.board, 1, 0)).toBe(PuyoColor.Empty)
+    expect(getCell(result!.board, 1, 1)).toBe(PuyoColor.Empty)
+    expect(getCell(result!.board, 1, 2)).toBe(PuyoColor.Empty)
+    expect(getCell(result!.board, 1, 3)).toBe(PuyoColor.Empty)
   })
 })
 

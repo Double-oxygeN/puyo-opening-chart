@@ -215,16 +215,6 @@ export function applyGravity(board: Board): Board {
   return newBoard
 }
 
-/** 消去→落下→再判定を繰り返し、最終的な安定盤面を返す */
-export function resolveChains(board: Board): Board {
-  let current = board
-  for (;;) {
-    const groups = findConnectedGroups(current)
-    if (groups.length === 0) return current
-    current = applyGravity(eliminateGroups(current, groups))
-  }
-}
-
 /** 盤面が窒息状態かどうかを判定する。3列目12段目が埋まっていれば窒息 */
 export function isDead(board: Board): boolean {
   return board[DEAD_ROW][DEAD_COL] !== PuyoColor.Empty

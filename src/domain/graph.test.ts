@@ -729,7 +729,7 @@ describe('validateGraph', () => {
       pair,
       col: 2,
       rotation: Rotation.Up,
-    })!
+    })!.board
     const [g1, node] = addNode(graph, board)
     graph = addEdge(g1, 'node-0' as NodeId, node.id, pair, 2, Rotation.Up)
 
@@ -803,5 +803,84 @@ describe('validateGraph', () => {
     graph = addEdge(graph, deadNode.id, nextNode.id, pair, 0, Rotation.Up)
 
     expect(validateGraph(graph)).toBe(false)
+  })
+
+  it('rejects a graph with incorrect chainNotation', () => {
+    let graph = createInitialGraph()
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    const result = placePair(createEmptyBoard(), {
+      pair,
+      col: 2,
+      rotation: Rotation.Up,
+    })!
+    const [g1, node] = addNode(graph, result.board)
+    // 連鎖なしの配置に不正な chainNotation を付与
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      2,
+      Rotation.Up,
+      undefined,
+      undefined,
+      '2:240',
+    )
+
+    expect(validateGraph(graph)).toBe(false)
+  })
+})
+
+describe('addEdge with chainNotation', () => {
+  it('stores chainNotation on an edge', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      0,
+      Rotation.Up,
+      undefined,
+      undefined,
+      '2:240',
+    )
+
+    expect(graph.edges[0].chainNotation).toBe('2:240')
+  })
+
+  it('omits chainNotation when not provided', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    graph = addEdge(g1, 'node-0' as NodeId, node.id, pair, 0, Rotation.Up)
+
+    expect(graph.edges[0].chainNotation).toBeUndefined()
+  })
+
+  it('preserves chainNotation through serialization', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      pair,
+      0,
+      Rotation.Up,
+      undefined,
+      undefined,
+      '3D:600',
+    )
+
+    const serialized = serializeGraph(graph)
+    const deserialized = deserializeGraph(serialized)!
+    expect(deserialized.edges[0].chainNotation).toBe('3D:600')
   })
 })

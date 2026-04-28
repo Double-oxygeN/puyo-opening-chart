@@ -1,12 +1,8 @@
 import type { FilledColor } from './color'
 import type { Board } from './board'
-import {
-  BOARD_COLS,
-  BOARD_ROWS,
-  getDropRow,
-  setCell,
-  resolveChains,
-} from './board'
+import { BOARD_COLS, BOARD_ROWS, getDropRow, setCell } from './board'
+import type { ChainResult } from './chain'
+import { resolveAndScoreChains } from './chain'
 
 /** 組ぷよ: 軸ぷよと子ぷよの色 */
 export interface PuyoPair {
@@ -119,32 +115,35 @@ function isValidPosition(state: PairState): boolean {
   return true
 }
 
+/** 組ぷよの配置結果 */
+export interface PlacePairResult {
+  /** 連鎖解決後の盤面 */
+  readonly board: Board
+  /** 連鎖情報 */
+  readonly chainResult: ChainResult
+}
+
 /**
- * 組ぷよを盤面に配置する。落下後の盤面を返す。
+ * 組ぷよを盤面に落下配置する（連鎖解決前）。
  * 配置不可（列が満杯など）の場合は null を返す。
  */
-export function placePair(board: Board, state: PairState): Board | null {
+function dropPair(board: Board, state: PairState): Board | null {
   const [dCol, dRow] = ROTATION_OFFSETS[state.rotation]
   const childCol = state.col + dCol
 
-  // 軸ぷよと子ぷよの落下位置を計算
   if (dCol === 0) {
     // 縦向き: 同じ列に2つ積む
     const dropRow = getDropRow(board, state.col)
     if (dropRow < 0) return null
 
     if (dRow > 0) {
-      // 子ぷよが上: 軸が先に落ち、その上に子ぷよ
       if (dropRow + 1 >= BOARD_ROWS) return null
       const b1 = setCell(board, dropRow, state.col, state.pair.axis)
-      const b2 = setCell(b1, dropRow + 1, state.col, state.pair.child)
-      return resolveChains(b2)
+      return setCell(b1, dropRow + 1, state.col, state.pair.child)
     } else {
-      // 子ぷよが下: 子ぷよが先に落ち、その上に軸
       if (dropRow + 1 >= BOARD_ROWS) return null
       const b1 = setCell(board, dropRow, state.col, state.pair.child)
-      const b2 = setCell(b1, dropRow + 1, state.col, state.pair.axis)
-      return resolveChains(b2)
+      return setCell(b1, dropRow + 1, state.col, state.pair.axis)
     }
   } else {
     // 横向き: 別の列に落とす（ちぎり）
@@ -153,9 +152,22 @@ export function placePair(board: Board, state: PairState): Board | null {
     if (axisDropRow < 0 || childDropRow < 0) return null
 
     const b1 = setCell(board, axisDropRow, state.col, state.pair.axis)
-    const b2 = setCell(b1, childDropRow, childCol, state.pair.child)
-    return resolveChains(b2)
+    return setCell(b1, childDropRow, childCol, state.pair.child)
   }
+}
+
+/**
+ * 組ぷよを盤面に配置する。連鎖解決後の盤面と連鎖情報を返す。
+ * 配置不可（列が満杯など）の場合は null を返す。
+ */
+export function placePair(
+  board: Board,
+  state: PairState,
+): PlacePairResult | null {
+  const dropped = dropPair(board, state)
+  if (!dropped) return null
+  const chainResult = resolveAndScoreChains(dropped)
+  return { board: chainResult.resultBoard, chainResult }
 }
 
 /** 使用可能な色からランダムに組ぷよを生成する */

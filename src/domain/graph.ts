@@ -9,6 +9,7 @@ import {
   isDead,
 } from './board'
 import { placePair } from './pair'
+import { formatChainNotation } from './chain'
 
 /** ノードの一意識別子 */
 export type NodeId = string & { readonly __brand: 'NodeId' }
@@ -40,6 +41,8 @@ export interface GraphEdge {
   readonly rotation: Rotation
   readonly next?: PuyoPair
   readonly nextNext?: PuyoPair
+  /** 連鎖構成フォーマット文字列（連鎖が発生した場合のみ） */
+  readonly chainNotation?: string
 }
 
 /** 有向グラフ */
@@ -90,6 +93,7 @@ export function addEdge(
   rotation: Rotation,
   next?: PuyoPair,
   nextNext?: PuyoPair,
+  chainNotation?: string,
 ): Graph {
   const edge: GraphEdge = {
     id: `edge-${graph.edgeIdSeq}` as EdgeId,
@@ -100,6 +104,7 @@ export function addEdge(
     rotation,
     ...(next != null ? { next } : {}),
     ...(nextNext != null ? { nextNext } : {}),
+    ...(chainNotation != null ? { chainNotation } : {}),
   }
   return {
     ...graph,
@@ -322,7 +327,11 @@ export function validateGraph(graph: Graph): boolean {
     }
     const resultBoard = placePair(fromNode.board, pairState)
     if (!resultBoard) return false
-    if (!boardsEqual(resultBoard, toNode.board)) return false
+    if (!boardsEqual(resultBoard.board, toNode.board)) return false
+
+    // 連鎖情報の検証
+    const expectedNotation = formatChainNotation(resultBoard.chainResult)
+    if ((expectedNotation ?? undefined) !== edge.chainNotation) return false
   }
 
   // ルート以外の全ノードがエッジで到達可能か確認
