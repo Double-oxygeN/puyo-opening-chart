@@ -47,12 +47,14 @@ export interface TsumoState {
   lockedPair: PuyoPair | null
   lockedNext: PuyoPair | null
   randomTsumo: boolean
+  randomNext: boolean
   changePair: (pair: PuyoPair) => void
   changeNext: (next: PuyoPair) => void
   changeNextNext: (nextNext: PuyoPair) => void
   clearNext: () => void
   clearNextNext: () => void
   toggleRandomTsumo: () => void
+  toggleRandomNext: () => void
   place: () => void
   resetForNode: (node: GraphNode | undefined) => void
   resetForDifficulty: (newDifficulty: Difficulty) => void
@@ -74,6 +76,7 @@ export function useTsumoState({
   const [next, setNext] = useState<PuyoPair | null>(null)
   const [nextNext, setNextNext] = useState<PuyoPair | null>(null)
   const [randomTsumo, setRandomTsumo] = useState(true)
+  const [randomNext, setRandomNext] = useState(false)
 
   const lockedPair = selectedNode?.constraint?.currentPair ?? null
   const lockedNext = selectedNode?.constraint?.nextPair ?? null
@@ -115,6 +118,30 @@ export function useTsumoState({
     setRandomTsumo((prev) => !prev)
   }, [])
 
+  /** ランダムネクストの状態を未確定枠に反映する */
+  const applyRandomNext = useCallback(
+    (isOn: boolean, currentLockedNext: PuyoPair | null) => {
+      if (isOn) {
+        if (!currentLockedNext) {
+          setNext(generateRandomPair(availableColors))
+        }
+        setNextNext(generateRandomPair(availableColors))
+      } else {
+        if (!currentLockedNext) {
+          setNext(null)
+        }
+        setNextNext(null)
+      }
+    },
+    [availableColors],
+  )
+
+  const toggleRandomNext = useCallback(() => {
+    const newValue = !randomNext
+    setRandomNext(newValue)
+    applyRandomNext(newValue, lockedNext)
+  }, [randomNext, lockedNext, applyRandomNext])
+
   const place = useCallback(() => {
     const success = placeAndAddNode(
       pairState,
@@ -122,10 +149,12 @@ export function useTsumoState({
       nextNext ?? undefined,
     )
     if (success) {
+      let nextAfterAdvance: PuyoPair | null = null
       if (effectiveNext) {
         setPairState(createInitialPairState(effectiveNext))
         if (nextNext) {
           setNext(nextNext)
+          nextAfterAdvance = nextNext
         } else {
           setNext(null)
         }
@@ -136,6 +165,14 @@ export function useTsumoState({
       } else {
         setPairState(createInitialPairState(effectivePair))
       }
+
+      // ランダムネクスト: 配置後の未確定枠をランダムに設定
+      if (randomNext) {
+        if (nextAfterAdvance === null) {
+          setNext(generateRandomPair(availableColors))
+        }
+        setNextNext(generateRandomPair(availableColors))
+      }
     }
   }, [
     placeAndAddNode,
@@ -144,6 +181,7 @@ export function useTsumoState({
     effectiveNext,
     nextNext,
     randomTsumo,
+    randomNext,
     availableColors,
   ])
 
@@ -154,16 +192,26 @@ export function useTsumoState({
         setPairState(createInitialPairState(constraint.currentPair))
         if (constraint.nextPair) {
           setNext(constraint.nextPair)
+        } else if (randomNext) {
+          setNext(generateRandomPair(availableColors))
         } else {
           setNext(null)
         }
       } else {
         setPairState(createInitialPairState(pairState.pair))
-        setNext(null)
+        if (randomNext) {
+          setNext(generateRandomPair(availableColors))
+        } else {
+          setNext(null)
+        }
       }
-      setNextNext(null)
+      if (randomNext) {
+        setNextNext(generateRandomPair(availableColors))
+      } else {
+        setNextNext(null)
+      }
     },
-    [pairState.pair],
+    [pairState.pair, randomNext, availableColors],
   )
 
   const resetForDifficulty = useCallback((_newDifficulty: Difficulty) => {
@@ -187,12 +235,14 @@ export function useTsumoState({
     lockedPair,
     lockedNext,
     randomTsumo,
+    randomNext,
     changePair,
     changeNext,
     changeNextNext,
     clearNext,
     clearNextNext,
     toggleRandomTsumo,
+    toggleRandomNext,
     place,
     resetForNode,
     resetForDifficulty,

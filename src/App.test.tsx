@@ -70,4 +70,27 @@ describe('App', () => {
       expect(screen.queryByText('エクスポート')).not.toBeInTheDocument()
     })
   })
+
+  it('shows random next toggle in header menu', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(
+        screen.getByText('ぷよぷよ通 初手研究チャート'),
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('メニュー ▾'))
+
+    // ランダムツモとランダムネクストの両方が表示される
+    expect(screen.getByText('ランダムツモ')).toBeInTheDocument()
+    expect(screen.getByText('ランダムネクスト')).toBeInTheDocument()
+
+    // ランダムネクストのトグルは既定でOFF
+    const randomNextToggle = screen
+      .getByText('ランダムネクスト')
+      .closest('div')!
+      .querySelector('button[role="switch"]')!
+    expect(randomNextToggle).toHaveAttribute('aria-checked', 'false')
+  })
 })
