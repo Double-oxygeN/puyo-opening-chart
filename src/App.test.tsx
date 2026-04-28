@@ -13,9 +13,13 @@ describe('App', () => {
     })
   })
 
-  it('shows loading state initially', () => {
+  it('shows loading state initially', async () => {
     render(<App />)
     expect(screen.getByText('読み込み中…')).toBeInTheDocument()
+    // hydration 完了を待って act() 警告を回避
+    await waitFor(() => {
+      expect(screen.queryByText('読み込み中…')).not.toBeInTheDocument()
+    })
   })
 
   it('does not show the board operation dialog initially', async () => {

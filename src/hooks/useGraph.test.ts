@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useGraph } from './useGraph'
 import { PuyoColor } from '../domain/color'
 import { Rotation } from '../domain/pair'
@@ -19,9 +19,15 @@ function makePairState(
   return { pair, col, rotation }
 }
 
+async function renderUseGraph() {
+  const hook = renderHook(() => useGraph())
+  await waitFor(() => expect(hook.result.current.loading).toBe(false))
+  return hook
+}
+
 describe('useGraph', () => {
-  it('starts with a single root node selected', () => {
-    const { result } = renderHook(() => useGraph())
+  it('starts with a single root node selected', async () => {
+    const { result } = await renderUseGraph()
 
     expect(result.current.graph.nodes).toHaveLength(1)
     expect(result.current.graph.edges).toHaveLength(0)
@@ -29,8 +35,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNode).toBeDefined()
   })
 
-  it('places a pair and adds a new node + edge', () => {
-    const { result } = renderHook(() => useGraph())
+  it('places a pair and adds a new node + edge', async () => {
+    const { result } = await renderUseGraph()
 
     let success: boolean
     act(() => {
@@ -47,8 +53,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNode?.id).toBe('node-1')
   })
 
-  it('selectNode changes the selected node', () => {
-    const { result } = renderHook(() => useGraph())
+  it('selectNode changes the selected node', async () => {
+    const { result } = await renderUseGraph()
 
     // Place a node first
     act(() => {
@@ -63,8 +69,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNodeId).toBe('node-0')
   })
 
-  it('can branch from a non-leaf node', () => {
-    const { result } = renderHook(() => useGraph())
+  it('can branch from a non-leaf node', async () => {
+    const { result } = await renderUseGraph()
 
     // Place first child from root
     act(() => {
@@ -90,8 +96,8 @@ describe('useGraph', () => {
     expect(rootEdges).toHaveLength(2)
   })
 
-  it('consecutive placements without re-render do not lose updates', () => {
-    const { result } = renderHook(() => useGraph())
+  it('consecutive placements without re-render do not lose updates', async () => {
+    const { result } = await renderUseGraph()
 
     // Simulate rapid consecutive placements in a single act()
     // This is the stale closure scenario: both calls should succeed
@@ -114,8 +120,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNodeId).toBe('node-2')
   })
 
-  it('replaces edge target when edge matches (same pair/next/nextNext)', () => {
-    const { result } = renderHook(() => useGraph())
+  it('replaces edge target when edge matches (same pair/next/nextNext)', async () => {
+    const { result } = await renderUseGraph()
     const next = { axis: PuyoColor.Green, child: PuyoColor.Green }
 
     // Place first time with next
@@ -150,8 +156,8 @@ describe('useGraph', () => {
     expect(newNode.board[0][3]).not.toBe(0) // col 3 has puyo
   })
 
-  it('removes descendants when edge is replaced', () => {
-    const { result } = renderHook(() => useGraph())
+  it('removes descendants when edge is replaced', async () => {
+    const { result } = await renderUseGraph()
 
     // Build chain: root → node-1 → node-2
     act(() => {
@@ -176,8 +182,8 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(1) // root→new node
   })
 
-  it('creates new node when edge differs in next', () => {
-    const { result } = renderHook(() => useGraph())
+  it('creates new node when edge differs in next', async () => {
+    const { result } = await renderUseGraph()
     const next1 = { axis: PuyoColor.Green, child: PuyoColor.Green }
     const next2 = { axis: PuyoColor.Blue, child: PuyoColor.Blue }
 
@@ -204,8 +210,8 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(2)
   })
 
-  it('select + place in same batch uses the correct node', () => {
-    const { result } = renderHook(() => useGraph())
+  it('select + place in same batch uses the correct node', async () => {
+    const { result } = await renderUseGraph()
 
     // Build a chain: root → node-1
     act(() => {
@@ -226,8 +232,8 @@ describe('useGraph', () => {
     expect(latestEdge?.from).toBe('node-0')
   })
 
-  it('auto-merges nodes with same board and same constraint', () => {
-    const { result } = renderHook(() => useGraph())
+  it('auto-merges nodes with same board and same constraint', async () => {
+    const { result } = await renderUseGraph()
 
     // Path 1: root → place RED_BLUE at col 0
     act(() => {
@@ -265,8 +271,8 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(4)
   })
 
-  it('does not merge nodes with same board but different constraints', () => {
-    const { result } = renderHook(() => useGraph())
+  it('does not merge nodes with same board but different constraints', async () => {
+    const { result } = await renderUseGraph()
     const next1 = { axis: PuyoColor.Green, child: PuyoColor.Green }
     const next2 = { axis: PuyoColor.Blue, child: PuyoColor.Blue }
 
@@ -295,8 +301,8 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(2)
   })
 
-  it('skips duplicate edge from same parent to same merged node (axis/child swapped)', () => {
-    const { result } = renderHook(() => useGraph())
+  it('skips duplicate edge from same parent to same merged node (axis/child swapped)', async () => {
+    const { result } = await renderUseGraph()
 
     // Place RED_BLUE at col 0 horizontally (axis=Red@col0, child=Blue@col1)
     act(() => {
@@ -321,8 +327,8 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(1)
   })
 
-  it('preserves memo on existing node when auto-merged', () => {
-    const { result } = renderHook(() => useGraph())
+  it('preserves memo on existing node when auto-merged', async () => {
+    const { result } = await renderUseGraph()
 
     // Path 1: root → RED_BLUE at col 0 → RED_RED at col 1
     act(() => {
@@ -355,8 +361,8 @@ describe('useGraph', () => {
     expect(mergedNode?.memo).toBe('重要なメモ')
   })
 
-  it('updates memo on a node', () => {
-    const { result } = renderHook(() => useGraph())
+  it('updates memo on a node', async () => {
+    const { result } = await renderUseGraph()
 
     act(() => {
       result.current.updateMemo('node-0' as NodeId, 'テストメモ')
@@ -365,8 +371,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNode?.memo).toBe('テストメモ')
   })
 
-  it('clears memo when set to empty string', () => {
-    const { result } = renderHook(() => useGraph())
+  it('clears memo when set to empty string', async () => {
+    const { result } = await renderUseGraph()
 
     act(() => {
       result.current.updateMemo('node-0' as NodeId, 'メモ')
@@ -379,8 +385,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNode?.memo).toBeUndefined()
   })
 
-  it('importGraph replaces the graph and selects root node', () => {
-    const { result } = renderHook(() => useGraph())
+  it('importGraph replaces the graph and selects root node', async () => {
+    const { result } = await renderUseGraph()
 
     // 既存グラフに操作を加える
     act(() => {
@@ -407,8 +413,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNodeId).toBe(importedGraph.nodes[0].id)
   })
 
-  it('deleteNode removes a node and selects parent', () => {
-    const { result } = renderHook(() => useGraph())
+  it('deleteNode removes a node and selects parent', async () => {
+    const { result } = await renderUseGraph()
 
     // Place a node
     act(() => {
@@ -425,8 +431,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNodeId).toBe('node-0')
   })
 
-  it('deleteNode does nothing for root node', () => {
-    const { result } = renderHook(() => useGraph())
+  it('deleteNode does nothing for root node', async () => {
+    const { result } = await renderUseGraph()
 
     act(() => {
       result.current.deleteNode('node-0' as NodeId)
@@ -435,8 +441,8 @@ describe('useGraph', () => {
     expect(result.current.selectedNodeId).toBe('node-0')
   })
 
-  it('rejects placement on a dead (suffocated) board', () => {
-    const { result } = renderHook(() => useGraph())
+  it('rejects placement on a dead (suffocated) board', async () => {
+    const { result } = await renderUseGraph()
 
     // 3列目を12段目まで積み上げて窒息状態にする
     // 同色4連鎖を避けるため、2色を交互に配置

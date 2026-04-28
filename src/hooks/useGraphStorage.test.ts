@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { exportSaveDataToFile, importSaveDataFromFile } from './useGraphStorage'
+import {
+  exportSaveDataToFile,
+  importSaveDataFromFile,
+  loadSaveData,
+  saveSaveData,
+  clearGraph,
+} from './useGraphStorage'
 import { createInitialGraph, addNode, addEdge } from '../domain/graph'
 import type { NodeId } from '../domain/graph'
 import { PuyoColor } from '../domain/color'
@@ -19,6 +25,63 @@ function buildTestGraph() {
   graph = addEdge(g2, 'node-0' as NodeId, node.id, pair, 0, Rotation.Up)
   return graph
 }
+
+describe('saveSaveData / loadSaveData', () => {
+  it('round-trips graph and difficulty through localStorage', () => {
+    const graph = buildTestGraph()
+    saveSaveData({ graph, difficulty: DEFAULT_DIFFICULTY })
+
+    const loaded = loadSaveData()
+    expect(loaded).not.toBeNull()
+    expect(loaded!.difficulty).toBe(DEFAULT_DIFFICULTY)
+    expect(loaded!.graph.nodes).toHaveLength(graph.nodes.length)
+    expect(loaded!.graph.edges).toHaveLength(graph.edges.length)
+    // ボード内容が一致する
+    expect(loaded!.graph.nodes[1].board).toEqual(graph.nodes[1].board)
+  })
+
+  it('returns null when localStorage is empty', () => {
+    expect(loadSaveData()).toBeNull()
+  })
+
+  it('returns null for invalid JSON in localStorage', () => {
+    localStorage.setItem('puyo-opening-chart:graph', 'not json')
+    expect(loadSaveData()).toBeNull()
+  })
+
+  it('returns null when difficulty field is missing', () => {
+    const graph = buildTestGraph()
+    saveSaveData({ graph, difficulty: DEFAULT_DIFFICULTY })
+
+    // 難易度フィールドを削除
+    const raw = JSON.parse(
+      localStorage.getItem('puyo-opening-chart:graph')!,
+    ) as Record<string, unknown>
+    delete raw.difficulty
+    localStorage.setItem('puyo-opening-chart:graph', JSON.stringify(raw))
+
+    expect(loadSaveData()).toBeNull()
+  })
+
+  it('returns null when graph data is structurally invalid', () => {
+    localStorage.setItem(
+      'puyo-opening-chart:graph',
+      JSON.stringify({ difficulty: 'medium', nodes: 'bad', edges: [] }),
+    )
+    expect(loadSaveData()).toBeNull()
+  })
+})
+
+describe('clearGraph', () => {
+  it('removes saved data from localStorage', () => {
+    const graph = buildTestGraph()
+    saveSaveData({ graph, difficulty: DEFAULT_DIFFICULTY })
+    expect(localStorage.getItem('puyo-opening-chart:graph')).not.toBeNull()
+
+    clearGraph()
+    expect(localStorage.getItem('puyo-opening-chart:graph')).toBeNull()
+  })
+})
 
 describe('exportSaveDataToFile', () => {
   it('triggers a file download with JSON content', () => {
