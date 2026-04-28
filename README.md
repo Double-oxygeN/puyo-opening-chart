@@ -2,14 +2,16 @@
 
 ぷよぷよ通の初手（オープニング）研究のためのWebツールです。盤面をノード、組ぷよパターンを辺とした有向グラフをグラフィカルに閲覧・編集できます。
 
-## 機能（予定）
+## 機能
 
 - **盤面グラフの可視化**: 空の盤面からスタートし、1手ずつ進めて有向グラフを構築
 - **組ぷよ分岐の管理**: 辺に現在の組ぷよ・ネクスト・ネクネクを注釈として設定し、分岐を表現
 - **盤面の自動統合**: 同じ盤面に到達した場合は既存ノードへ辺を接続
 - **メモ機能**: 各ノードに自由記述テキストのメモを付与
+- **連鎖検出**: 4連結以上の同色ぷよを自動検出し、連鎖構成・スコアを表示
+- **難易度設定**: 甘口（3色）/ 中辛（4色）/ 辛口（5色）の切り替え
 - **データの保存**:
-  - ローカルストレージによる一時保存
+  - ローカルストレージによる自動保存
   - JSON形式でのエクスポート/インポート
 
 ## 技術スタック
@@ -24,6 +26,7 @@
 | リンター       | [ESLint](https://eslint.org/)（型チェック強化）                                                        |
 | フォーマッター | [Prettier](https://prettier.io/)                                                                       |
 | Gitフック      | [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged) |
+| CI/CD          | [GitHub Actions](https://github.co.jp/features/actions) + [GitHub Pages](https://pages.github.com/)    |
 
 ## セットアップ
 
@@ -76,32 +79,11 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-## データ形式
+## ドキュメント
 
-グラフデータは以下のようなJSON形式で保存されます（予定）:
-
-```json
-{
-  "version": 1,
-  "nodes": [
-    {
-      "id": "node-0",
-      "board": [[0, 0, 0, 0, 0, 0], "..."],
-      "memo": "空盤面"
-    }
-  ],
-  "edges": [
-    {
-      "id": "edge-0",
-      "from": "node-0",
-      "to": "node-1",
-      "pair": { "axis": "red", "child": "blue" },
-      "next": { "axis": "green", "child": "yellow" },
-      "nextNext": null
-    }
-  ]
-}
-```
+- [ぷよぷよ通 ゲームルール](./docs/puyo-rules.md) — 盤面の仕様、連鎖・スコア計算などのルール
+- [連鎖構成フォーマット](./docs/chain-notation.md) — 連鎖構成の表記法
+- [データ形式](./docs/data-format.md) — グラフデータのJSON形式の仕様
 
 ## ライセンス
 
