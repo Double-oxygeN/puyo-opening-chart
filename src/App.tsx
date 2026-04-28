@@ -152,6 +152,8 @@ function App() {
           onChangeDifficulty={handleChangeDifficulty}
           randomTsumo={tsumo.randomTsumo}
           onToggleRandomTsumo={tsumo.toggleRandomTsumo}
+          randomNext={tsumo.randomNext}
+          onToggleRandomNext={tsumo.toggleRandomNext}
           onExport={handleExport}
           onImport={handleImport}
           onReset={handleResetGraph}

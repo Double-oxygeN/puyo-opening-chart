@@ -68,6 +68,11 @@ test('shows suffocation message and hides pair controls on dead board', async ({
   await node.click()
   await expect(page.getByText('盤面操作')).toBeVisible()
 
+  // ランダムツモOFF
+  await page.getByText('メニュー ▾').click()
+  await page.getByRole('switch', { name: 'ランダムツモ' }).click()
+  await page.getByText('メニュー ▾').click()
+
   // ツモを子ぷよ=緑、軸ぷよ=赤に変更（縦置きで赤緑赤緑…と交互に積まれ連鎖しない）
   await page.getByRole('button', { name: 'ツモの組ぷよを編集' }).click()
   await page
@@ -164,7 +169,7 @@ test('builds multi-step graph', async ({ page }) => {
 
   // ランダムツモOFF + 連鎖しない色（赤緑）に設定
   await page.getByText('メニュー ▾').click()
-  await page.getByRole('switch').click()
+  await page.getByRole('switch', { name: 'ランダムツモ' }).click()
   await page.getByText('メニュー ▾').click()
 
   await page.getByRole('button', { name: 'ツモの組ぷよを編集' }).click()
@@ -303,7 +308,7 @@ test('toggles random tsumo via menu', async ({ page }) => {
   await page.getByText('メニュー ▾').click()
 
   // デフォルトはON
-  const toggle = page.getByRole('switch')
+  const toggle = page.getByRole('switch', { name: 'ランダムツモ' })
   await expect(toggle).toHaveAttribute('aria-checked', 'true')
 
   // OFF に切り替え
@@ -313,6 +318,45 @@ test('toggles random tsumo via menu', async ({ page }) => {
   // ON に戻す
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-checked', 'true')
+})
+
+test('toggles random next via menu', async ({ page }) => {
+  await page.goto('/')
+
+  // ノードをクリックしてダイアログを開く
+  const node = page.getByRole('button', { name: '盤面ノード' }).first()
+  await node.click()
+
+  const nextSlot = page.getByRole('button', { name: 'ネクストの組ぷよを編集' })
+  const nextNextSlot = page.getByRole('button', {
+    name: 'ネクネクの組ぷよを編集',
+  })
+
+  // デフォルトはOFF → ネクスト・ネクネクは未設定（＋表示）
+  await expect(nextSlot).toContainText('＋')
+  await expect(nextNextSlot).toContainText('＋')
+
+  await page.getByText('メニュー ▾').click()
+
+  const toggle = page.getByRole('switch', { name: 'ランダムネクスト' })
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+
+  // ON に切り替え → ネクスト・ネクネクにランダム色が設定される
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await page.getByText('メニュー ▾').click()
+
+  await expect(nextSlot).not.toContainText('＋')
+  await expect(nextNextSlot).not.toContainText('＋')
+
+  // OFF に戻す → ネクスト・ネクネクが未設定に戻る
+  await page.getByText('メニュー ▾').click()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await page.getByText('メニュー ▾').click()
+
+  await expect(nextSlot).toContainText('＋')
+  await expect(nextNextSlot).toContainText('＋')
 })
 
 test('persists graph across page reloads', async ({ page }) => {
