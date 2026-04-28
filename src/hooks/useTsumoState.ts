@@ -120,12 +120,16 @@ export function useTsumoState({
 
   /** ランダムネクストの状態を未確定枠に反映する */
   const applyRandomNext = useCallback(
-    (isOn: boolean, currentLockedNext: PuyoPair | null) => {
+    (
+      isOn: boolean,
+      currentLockedNext: PuyoPair | null,
+      colors: readonly FilledColor[],
+    ) => {
       if (isOn) {
         if (!currentLockedNext) {
-          setNext(generateRandomPair(availableColors))
+          setNext(generateRandomPair(colors))
         }
-        setNextNext(generateRandomPair(availableColors))
+        setNextNext(generateRandomPair(colors))
       } else {
         if (!currentLockedNext) {
           setNext(null)
@@ -133,14 +137,14 @@ export function useTsumoState({
         setNextNext(null)
       }
     },
-    [availableColors],
+    [],
   )
 
   const toggleRandomNext = useCallback(() => {
     const newValue = !randomNext
     setRandomNext(newValue)
-    applyRandomNext(newValue, lockedNext)
-  }, [randomNext, lockedNext, applyRandomNext])
+    applyRandomNext(newValue, lockedNext, availableColors)
+  }, [randomNext, lockedNext, availableColors, applyRandomNext])
 
   const place = useCallback(() => {
     const success = placeAndAddNode(
@@ -190,39 +194,28 @@ export function useTsumoState({
       const constraint = node?.constraint
       if (constraint?.currentPair) {
         setPairState(createInitialPairState(constraint.currentPair))
-        if (constraint.nextPair) {
-          setNext(constraint.nextPair)
-        } else if (randomNext) {
-          setNext(generateRandomPair(availableColors))
-        } else {
-          setNext(null)
-        }
       } else {
         setPairState(createInitialPairState(pairState.pair))
-        if (randomNext) {
-          setNext(generateRandomPair(availableColors))
-        } else {
-          setNext(null)
-        }
       }
-      if (randomNext) {
-        setNextNext(generateRandomPair(availableColors))
-      } else {
-        setNextNext(null)
+      if (constraint?.nextPair) {
+        setNext(constraint.nextPair)
       }
+      applyRandomNext(randomNext, constraint?.nextPair ?? null, availableColors)
     },
-    [pairState.pair, randomNext, availableColors],
+    [pairState.pair, randomNext, availableColors, applyRandomNext],
   )
 
-  const resetForDifficulty = useCallback((_newDifficulty: Difficulty) => {
-    const newColors = getAvailableColors(_newDifficulty)
-    const defaultColor = newColors[0]
-    setPairState(
-      createInitialPairState({ axis: defaultColor, child: defaultColor }),
-    )
-    setNext(null)
-    setNextNext(null)
-  }, [])
+  const resetForDifficulty = useCallback(
+    (_newDifficulty: Difficulty) => {
+      const newColors = getAvailableColors(_newDifficulty)
+      const defaultColor = newColors[0]
+      setPairState(
+        createInitialPairState({ axis: defaultColor, child: defaultColor }),
+      )
+      applyRandomNext(randomNext, null, newColors)
+    },
+    [randomNext, applyRandomNext],
+  )
 
   return {
     pairState,
