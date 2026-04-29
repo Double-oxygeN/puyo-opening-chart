@@ -200,7 +200,14 @@ describe('replaceEdgeTarget', () => {
     graph = addEdge(graph, 'node-0' as NodeId, nodeA.id, pair, 2, Rotation.Up)
 
     const edgeId = graph.edges[0].id
-    graph = replaceEdgeTarget(graph, edgeId, nodeB.id)
+    graph = replaceEdgeTarget(
+      graph,
+      edgeId,
+      nodeB.id,
+      undefined,
+      2,
+      Rotation.Up,
+    )
 
     expect(graph.edges[0].to).toBe(nodeB.id)
     // nodeA is now unreachable → pruned
@@ -225,7 +232,14 @@ describe('replaceEdgeTarget', () => {
     graph = addEdge(graph, nodeA.id, nodeB.id, pair, 2, Rotation.Up)
 
     const edgeId = graph.edges[0].id
-    graph = replaceEdgeTarget(graph, edgeId, nodeC.id)
+    graph = replaceEdgeTarget(
+      graph,
+      edgeId,
+      nodeC.id,
+      undefined,
+      2,
+      Rotation.Up,
+    )
 
     // A and B are unreachable → pruned
     expect(graph.nodes).toHaveLength(2) // root + C
@@ -234,7 +248,7 @@ describe('replaceEdgeTarget', () => {
     expect(graph.nodes.find((n) => n.id === nodeB.id)).toBeUndefined()
   })
 
-  it('updates col and rotation when provided', () => {
+  it('updates col and rotation', () => {
     // エッジの配置情報（col/rotation）も更新されることを確認する（バグ修正の回帰テスト）
     let graph = createInitialGraph()
     const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
@@ -304,7 +318,14 @@ describe('replaceEdgeTarget', () => {
     const rootToAEdge = graph.edges.find(
       (e) => e.from === ('node-0' as NodeId) && e.to === nodeA.id,
     )!
-    graph = replaceEdgeTarget(graph, rootToAEdge.id, nodeD.id)
+    graph = replaceEdgeTarget(
+      graph,
+      rootToAEdge.id,
+      nodeD.id,
+      undefined,
+      2,
+      Rotation.Up,
+    )
 
     expect(graph.nodes).toHaveLength(4) // root + B + C + D (A pruned)
     expect(graph.nodes.find((n) => n.id === nodeA.id)).toBeUndefined()

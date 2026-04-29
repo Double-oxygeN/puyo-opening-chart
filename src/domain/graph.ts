@@ -183,21 +183,15 @@ export function replaceEdgeTarget(
   graph: Graph,
   edgeId: EdgeId,
   newTarget: NodeId,
-  chainNotation?: string,
-  col?: number,
-  rotation?: Rotation,
+  chainNotation: string | undefined,
+  col: number,
+  rotation: Rotation,
 ): Graph {
   const updated = {
     ...graph,
     edges: graph.edges.map((e) =>
       e.id === edgeId
-        ? {
-            ...e,
-            to: newTarget,
-            chainNotation,
-            ...(col !== undefined ? { col } : {}),
-            ...(rotation !== undefined ? { rotation } : {}),
-          }
+        ? { ...e, to: newTarget, chainNotation, col, rotation }
         : e,
     ),
   }
