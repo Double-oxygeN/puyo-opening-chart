@@ -22,6 +22,7 @@ import {
   importSaveDataFromFile,
 } from './hooks/useGraphStorage'
 import type { NodeId } from './domain/graph'
+import { findParentNodeId } from './domain/graph'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
 import HeaderMenu from './components/HeaderMenu'
@@ -103,6 +104,18 @@ function App() {
     deleteNode(selectedNodeId)
     setIsDialogOpen(false)
   }, [deleteNode, selectedNodeId])
+
+  const handleGoBack = useCallback(() => {
+    const parentId = findParentNodeId(graph, selectedNodeId)
+    if (!parentId) return
+    const parentNode = graph.nodes.find((n) => n.id === parentId)
+    const matchingEdges = graph.edges.filter(
+      (e) => e.from === parentId && e.to === selectedNodeId,
+    )
+    const edge = matchingEdges[matchingEdges.length - 1]
+    selectNode(parentId)
+    tsumo.goBackToParent(parentNode, selectedNode?.constraint, edge?.pair)
+  }, [graph, selectedNodeId, selectedNode, selectNode, tsumo])
 
   const handleExport = useCallback(() => {
     exportSaveDataToFile({ graph, difficulty })
@@ -195,6 +208,9 @@ function App() {
           onSaveMemo={handleSaveMemo}
           onDeleteNode={
             selectedNodeId !== graph.nodes[0]?.id ? handleDeleteNode : undefined
+          }
+          onGoBack={
+            selectedNodeId !== graph.nodes[0]?.id ? handleGoBack : undefined
           }
         />
       )}

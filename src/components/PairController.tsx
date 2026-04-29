@@ -19,17 +19,20 @@ interface PairControllerProps {
   pairState: PairState
   onUpdatePairState: (state: PairState) => void
   onPlace: () => void
+  onGoBack?: () => void
 }
 
 export default function PairController({
   pairState,
   onUpdatePairState,
   onPlace,
+  onGoBack,
 }: PairControllerProps) {
   useKeyboardInput({
     pairState,
     onUpdatePairState,
     onPlace,
+    onGoBack,
   })
 
   return (
@@ -38,7 +41,7 @@ export default function PairController({
       <div className="text-xs text-gray-400 text-center leading-relaxed">
         {'←→: 移動 / Z: 左回転 / X: 右回転'}
         <br />
-        ↓/Enter: 設置
+        {'↓/Enter: 設置 / B: 1手戻す'}
       </div>
     </div>
   )

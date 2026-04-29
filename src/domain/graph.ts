@@ -232,13 +232,24 @@ export function removeNode(graph: Graph, nodeId: NodeId): Graph {
   return pruneUnreachable(filtered)
 }
 
-/** 指定ノードの親ノードIDを返す（最初に見つかったもの） */
+/** 指定ノードの親ノードIDを返す（最後に見つかったもの＝最近の操作） */
 export function findParentNodeId(
   graph: Graph,
   nodeId: NodeId,
 ): NodeId | undefined {
-  const edge = graph.edges.find((e) => e.to === nodeId)
-  return edge?.from
+  const edges = graph.edges.filter((e) => e.to === nodeId)
+  return edges[edges.length - 1]?.from
+}
+
+/** 指定エッジを末尾に移動する（最近の操作として記録する） */
+export function moveEdgeToEnd(graph: Graph, edgeId: EdgeId): Graph {
+  const idx = graph.edges.findIndex((e) => e.id === edgeId)
+  if (idx === -1 || idx === graph.edges.length - 1) return graph
+  const edge = graph.edges[idx]
+  return {
+    ...graph,
+    edges: [...graph.edges.slice(0, idx), ...graph.edges.slice(idx + 1), edge],
+  }
 }
 
 /** ノードのメモを更新する */

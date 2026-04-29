@@ -19,6 +19,7 @@ import { PuyoColor } from '../domain/color'
 import { Rotation } from '../domain/pair'
 import type { PairState, PuyoPair } from '../domain/pair'
 import type { NodeId } from '../domain/graph'
+import { findParentNodeId } from '../domain/graph'
 import { DEAD_COL } from '../domain/board'
 import { DEFAULT_DIFFICULTY } from '../domain/difficulty'
 
@@ -283,6 +284,36 @@ describe('useGraph', () => {
     expect(result.current.graph.nodes).toHaveLength(4)
     // root→node-1, node-1→node-2, root→node-3, node-3→node-2 = 4 edges
     expect(result.current.graph.edges).toHaveLength(4)
+  })
+
+  it('findParentNodeId returns the most recently traversed parent for a merge node', async () => {
+    const { result } = await renderUseGraph()
+
+    // Path 1: root → RED_BLUE at col 0 → RED_RED at col 1 (node-2)
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+
+    // Go back to root
+    act(() => {
+      result.current.selectNode('node-0' as NodeId)
+    })
+
+    // Path 2: root → RED_RED at col 1 → RED_BLUE at col 0 → merged into node-2
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 1, Rotation.Up))
+    })
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_BLUE, 0, Rotation.Up))
+    })
+
+    // Merged node is node-2; most recently used parent should be node-3 (from path 2)
+    expect(result.current.selectedNodeId).toBe('node-2')
+    const parentId = findParentNodeId(result.current.graph, 'node-2' as NodeId)
+    expect(parentId).toBe('node-3')
   })
 
   it('does not merge nodes with same board but different constraints', async () => {

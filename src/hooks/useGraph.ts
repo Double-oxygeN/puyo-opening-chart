@@ -22,6 +22,7 @@ import {
   findMergeableNode,
   findDuplicateEdge,
   replaceEdgeTarget,
+  moveEdgeToEnd,
   removeNode,
   findParentNodeId,
   updateNodeMemo,
@@ -104,16 +105,22 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
         )
 
         if (mergeTarget) {
-          // 既に同じノードを指していれば何もしない
+          // 既に同じノードを指していれば辺を末尾に移動して選択
           if (existingEdge.to === mergeTarget.id) {
-            return { ...state, selectedNodeId: mergeTarget.id }
+            const updatedGraph = moveEdgeToEnd(state.graph, existingEdge.id)
+            return {
+              ...state,
+              graph: updatedGraph,
+              selectedNodeId: mergeTarget.id,
+            }
           }
-          // エッジの遷移先を既存ノードに差し替え
-          const updatedGraph = replaceEdgeTarget(
+          // エッジの遷移先を既存ノードに差し替え、末尾に移動
+          const replacedGraph = replaceEdgeTarget(
             state.graph,
             existingEdge.id,
             mergeTarget.id,
           )
+          const updatedGraph = moveEdgeToEnd(replacedGraph, existingEdge.id)
           return {
             ...state,
             graph: updatedGraph,
@@ -121,17 +128,18 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           }
         }
 
-        // 新ノードを作成し、エッジの遷移先を差し替え
+        // 新ノードを作成し、エッジの遷移先を差し替え、末尾に移動
         const [graphWithNode, newNode] = addNode(
           state.graph,
           newBoard,
           edgeConstraint,
         )
-        const updatedGraph = replaceEdgeTarget(
+        const replacedGraph = replaceEdgeTarget(
           graphWithNode,
           existingEdge.id,
           newNode.id,
         )
+        const updatedGraph = moveEdgeToEnd(replacedGraph, existingEdge.id)
         return { ...state, graph: updatedGraph, selectedNodeId: newNode.id }
       }
 
@@ -157,7 +165,13 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           action.nextNext,
         )
         if (dupEdge) {
-          return { ...state, selectedNodeId: mergeableNode.id }
+          // 重複エッジを末尾に移動して最近の操作として記録
+          const updatedGraph = moveEdgeToEnd(state.graph, dupEdge.id)
+          return {
+            ...state,
+            graph: updatedGraph,
+            selectedNodeId: mergeableNode.id,
+          }
         }
 
         const graphWithEdge = addEdge(

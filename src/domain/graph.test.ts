@@ -22,6 +22,7 @@ import {
   pruneUnreachable,
   removeNode,
   findParentNodeId,
+  moveEdgeToEnd,
   constraintsEqual,
   findMergeableNode,
   findDuplicateEdge,
@@ -30,7 +31,7 @@ import {
   deserializeGraph,
   validateGraph,
 } from './graph'
-import type { NodeId } from './graph'
+import type { EdgeId, NodeId } from './graph'
 import { createEmptyBoard, setCell, DEAD_COL, DEAD_ROW } from './board'
 import { PuyoColor } from './color'
 import { Rotation } from './pair'
@@ -426,6 +427,93 @@ describe('findParentNodeId', () => {
       Rotation.Up,
     )
     expect(findParentNodeId(graph, node.id)).toBe('node-0')
+  })
+
+  it('returns the most recently added parent for a merge node', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node1] = addNode(
+      graph,
+      setCell(createEmptyBoard(), 0, 1, PuyoColor.Blue),
+    )
+    const [g2, node2] = addNode(
+      g1,
+      setCell(createEmptyBoard(), 0, 2, PuyoColor.Green),
+    )
+    const [g3, sharedNode] = addNode(g2, board)
+    // 最初に node1 → sharedNode を追加
+    graph = addEdge(
+      g3,
+      node1.id,
+      sharedNode.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+    // 次に node2 → sharedNode を追加（より後）
+    graph = addEdge(
+      graph,
+      node2.id,
+      sharedNode.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Green },
+      3,
+      Rotation.Up,
+    )
+    // 最後に追加された node2 が返るべき
+    expect(findParentNodeId(graph, sharedNode.id)).toBe(node2.id)
+  })
+})
+
+describe('moveEdgeToEnd', () => {
+  it('moves the specified edge to the end of the array', () => {
+    let graph = createInitialGraph()
+    const board1 = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const board2 = setCell(createEmptyBoard(), 0, 1, PuyoColor.Blue)
+    const [g1, node1] = addNode(graph, board1)
+    const [g2, node2] = addNode(g1, board2)
+    graph = addEdge(
+      g2,
+      'node-0' as NodeId,
+      node1.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+    graph = addEdge(
+      graph,
+      'node-0' as NodeId,
+      node2.id,
+      { axis: PuyoColor.Blue, child: PuyoColor.Red },
+      3,
+      Rotation.Up,
+    )
+    const firstEdgeId = graph.edges[0].id
+    const result = moveEdgeToEnd(graph, firstEdgeId)
+    expect(result.edges[result.edges.length - 1].id).toBe(firstEdgeId)
+    expect(result.edges[0].id).not.toBe(firstEdgeId)
+  })
+
+  it('returns the same graph if the edge is already at the end', () => {
+    let graph = createInitialGraph()
+    const board = setCell(createEmptyBoard(), 0, 0, PuyoColor.Red)
+    const [g1, node] = addNode(graph, board)
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      node.id,
+      { axis: PuyoColor.Red, child: PuyoColor.Blue },
+      2,
+      Rotation.Up,
+    )
+    const lastEdgeId = graph.edges[graph.edges.length - 1].id
+    const result = moveEdgeToEnd(graph, lastEdgeId)
+    expect(result).toBe(graph)
+  })
+
+  it('returns the same graph if the edge id does not exist', () => {
+    const graph = createInitialGraph()
+    const result = moveEdgeToEnd(graph, 'edge-999' as EdgeId)
+    expect(result).toBe(graph)
   })
 })
 
