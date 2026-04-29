@@ -17,7 +17,7 @@ import { PuyoColor } from '../domain/color'
 import type { FilledColor } from '../domain/color'
 import type { PuyoPair, PairState } from '../domain/pair'
 import { createInitialPairState, generateRandomPair } from '../domain/pair'
-import type { GraphNode } from '../domain/graph'
+import type { GraphNode, TsumoConstraint } from '../domain/graph'
 import type { Difficulty } from '../domain/difficulty'
 import { getAvailableColors } from '../domain/difficulty'
 
@@ -58,6 +58,10 @@ export interface TsumoState {
   place: () => void
   resetForNode: (node: GraphNode | undefined) => void
   resetForDifficulty: (newDifficulty: Difficulty) => void
+  goBackToParent: (
+    parentNode: GraphNode | undefined,
+    childConstraint: TsumoConstraint | undefined,
+  ) => void
 }
 
 export function useTsumoState({
@@ -217,6 +221,43 @@ export function useTsumoState({
     [randomNext, applyRandomNext],
   )
 
+  const goBackToParent = useCallback(
+    (
+      parentNode: GraphNode | undefined,
+      childConstraint: TsumoConstraint | undefined,
+    ) => {
+      // 親ノードの確定配色でペアをリセット
+      const parentConstraint = parentNode?.constraint
+      if (parentConstraint?.currentPair) {
+        setPairState(createInitialPairState(parentConstraint.currentPair))
+      } else {
+        setPairState(createInitialPairState(pairState.pair))
+      }
+
+      // 子ノードの確定ツモ → 親の未確定ネクストに設定
+      // 親に確定ネクストがない場合のみ設定可能
+      const newNext = childConstraint?.currentPair ?? null
+      if (!parentConstraint?.nextPair) {
+        setNext(newNext)
+      }
+
+      // 子ノードの確定ネクスト → 親の未確定ネクネクに設定
+      const newNextNext = childConstraint?.nextPair ?? null
+      setNextNext(newNextNext)
+
+      // ランダムネクスト: 補完後の未確定枠をランダムに埋める
+      if (randomNext) {
+        if (!parentConstraint?.nextPair && !newNext) {
+          setNext(generateRandomPair(availableColors))
+        }
+        if (!newNextNext) {
+          setNextNext(generateRandomPair(availableColors))
+        }
+      }
+    },
+    [pairState.pair, randomNext, availableColors],
+  )
+
   return {
     pairState,
     setPairState,
@@ -239,5 +280,6 @@ export function useTsumoState({
     place,
     resetForNode,
     resetForDifficulty,
+    goBackToParent,
   }
 }

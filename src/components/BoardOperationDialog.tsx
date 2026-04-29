@@ -47,6 +47,8 @@ interface BoardOperationDialogProps {
   onSaveMemo: (memo: string) => void
   /** ノード削除コールバック（ルートノードの場合は undefined） */
   onDeleteNode?: () => void
+  /** 1手戻すコールバック（ルートノードの場合は undefined） */
+  onGoBack?: () => void
 }
 
 export default function BoardOperationDialog({
@@ -69,6 +71,7 @@ export default function BoardOperationDialog({
   memo,
   onSaveMemo,
   onDeleteNode,
+  onGoBack,
 }: BoardOperationDialogProps) {
   const [draftMemo, setDraftMemo] = useState(memo)
   const isDirty = draftMemo !== memo
@@ -150,7 +153,18 @@ export default function BoardOperationDialog({
             value={draftMemo}
             onChange={(e) => setDraftMemo(e.target.value)}
           />
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            {onGoBack ? (
+              <button
+                type="button"
+                className="px-3 py-1 text-xs font-medium rounded-md text-white bg-gray-500 hover:bg-gray-600 transition-colors"
+                onClick={onGoBack}
+              >
+                1手戻す
+              </button>
+            ) : (
+              <div />
+            )}
             <button
               type="button"
               className="px-3 py-1 text-xs font-medium rounded-md text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
