@@ -197,6 +197,43 @@ describe('useGraph', () => {
     expect(result.current.graph.edges).toHaveLength(1) // root→new node
   })
 
+  it('overwrites chainNotation when edge is replaced', async () => {
+    const { result } = await renderUseGraph()
+
+    // node-0 → node-1: RED_RED at col 0 (2 reds, no chain)
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 0, Rotation.Up))
+    })
+
+    // node-1 → (back to node-0 via merge): RED_RED at col 0 (4 reds in col 0 → 1-chain, all clear)
+    // 全消しになるので node-0 に自動統合される
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 0, Rotation.Up))
+    })
+
+    // 辺 node-1→node-0 に連鎖情報が記録されているか確認
+    const edgeWithChain = result.current.graph.edges.find(
+      (e) => e.from === ('node-1' as NodeId),
+    )
+    expect(edgeWithChain?.chainNotation).toBeDefined()
+
+    // node-1 に戻る
+    act(() => {
+      result.current.selectNode('node-1' as NodeId)
+    })
+
+    // 同じ組ぷよを隣接しない列 (col 2) に配置 → 辺の付け替えが発生（連鎖なし）
+    act(() => {
+      result.current.placeAndAddNode(makePairState(RED_RED, 2, Rotation.Up))
+    })
+
+    // 付け替え後の辺の連鎖情報は空になる
+    const replacedEdge = result.current.graph.edges.find(
+      (e) => e.from === ('node-1' as NodeId),
+    )
+    expect(replacedEdge?.chainNotation).toBeUndefined()
+  })
+
   it('creates new node when edge differs in next', async () => {
     const { result } = await renderUseGraph()
     const next1 = { axis: PuyoColor.Green, child: PuyoColor.Green }
