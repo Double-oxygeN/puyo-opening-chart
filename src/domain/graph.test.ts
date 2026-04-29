@@ -234,6 +234,52 @@ describe('replaceEdgeTarget', () => {
     expect(graph.nodes.find((n) => n.id === nodeB.id)).toBeUndefined()
   })
 
+  it('updates col and rotation when provided', () => {
+    // エッジの配置情報（col/rotation）も更新されることを確認する（バグ修正の回帰テスト）
+    let graph = createInitialGraph()
+    const pair = { axis: PuyoColor.Red, child: PuyoColor.Red }
+
+    // 元のエッジ: col=2, rotation=Up
+    const originalResult = placePair(createEmptyBoard(), {
+      pair,
+      col: 2,
+      rotation: Rotation.Up,
+    })!
+    const [g1, originalNode] = addNode(graph, originalResult.board)
+    graph = addEdge(
+      g1,
+      'node-0' as NodeId,
+      originalNode.id,
+      pair,
+      2,
+      Rotation.Up,
+    )
+
+    // 新しい盤面: col=3, rotation=Left で配置
+    const newResult = placePair(createEmptyBoard(), {
+      pair,
+      col: 3,
+      rotation: Rotation.Left,
+    })!
+    const [g2, newNode] = addNode(graph, newResult.board)
+    graph = g2
+
+    const edgeId = graph.edges[0].id
+    graph = replaceEdgeTarget(
+      graph,
+      edgeId,
+      newNode.id,
+      undefined,
+      3,
+      Rotation.Left,
+    )
+
+    expect(graph.edges[0].col).toBe(3)
+    expect(graph.edges[0].rotation).toBe(Rotation.Left)
+    // validateGraph がエッジを再生して新しい盤面と一致することを確認
+    expect(validateGraph(graph)).toBe(true)
+  })
+
   it('preserves nodes reachable via other paths', () => {
     // root → A → C, root → B → C (DAG), redirect root→A to root→D
     let graph = createInitialGraph()
