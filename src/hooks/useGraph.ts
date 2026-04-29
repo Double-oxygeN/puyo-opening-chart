@@ -120,6 +120,8 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
             existingEdge.id,
             mergeTarget.id,
             chainNotation,
+            action.pairState.col,
+            action.pairState.rotation,
           )
           const updatedGraph = moveEdgeToEnd(replacedGraph, existingEdge.id)
           return {
@@ -140,6 +142,8 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
           existingEdge.id,
           newNode.id,
           chainNotation,
+          action.pairState.col,
+          action.pairState.rotation,
         )
         const updatedGraph = moveEdgeToEnd(replacedGraph, existingEdge.id)
         return { ...state, graph: updatedGraph, selectedNodeId: newNode.id }

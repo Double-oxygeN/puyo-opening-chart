@@ -183,12 +183,16 @@ export function replaceEdgeTarget(
   graph: Graph,
   edgeId: EdgeId,
   newTarget: NodeId,
-  chainNotation?: string,
+  chainNotation: string | undefined,
+  col: number,
+  rotation: Rotation,
 ): Graph {
   const updated = {
     ...graph,
     edges: graph.edges.map((e) =>
-      e.id === edgeId ? { ...e, to: newTarget, chainNotation } : e,
+      e.id === edgeId
+        ? { ...e, to: newTarget, chainNotation, col, rotation }
+        : e,
     ),
   }
   return pruneUnreachable(updated)
