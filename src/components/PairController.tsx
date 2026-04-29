@@ -41,13 +41,7 @@ export default function PairController({
       <div className="text-xs text-gray-400 text-center leading-relaxed">
         {'←→: 移動 / Z: 左回転 / X: 右回転'}
         <br />
-        {'↓/Enter: 設置'}
-        {onGoBack && (
-          <>
-            <br />
-            {'B: 1手戻す'}
-          </>
-        )}
+        {'↓/Enter: 設置 / B: 1手戻す'}
       </div>
     </div>
   )
