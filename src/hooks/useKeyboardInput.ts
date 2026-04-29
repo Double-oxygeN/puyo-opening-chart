@@ -25,6 +25,7 @@ interface UseKeyboardInputOptions {
   pairState: PairState
   onUpdatePairState: (state: PairState) => void
   onPlace: () => void
+  onGoBack?: () => void
   enabled?: boolean
 }
 
@@ -32,6 +33,7 @@ export function useKeyboardInput({
   pairState,
   onUpdatePairState,
   onPlace,
+  onGoBack,
   enabled = true,
 }: UseKeyboardInputOptions) {
   const handleKeyDown = useCallback(
@@ -62,9 +64,16 @@ export function useKeyboardInput({
           e.preventDefault()
           onPlace()
           break
+        case 'b':
+        case 'B':
+          if (onGoBack) {
+            e.preventDefault()
+            onGoBack()
+          }
+          break
       }
     },
-    [pairState, onUpdatePairState, onPlace, enabled],
+    [pairState, onUpdatePairState, onPlace, onGoBack, enabled],
   )
 
   useEffect(() => {

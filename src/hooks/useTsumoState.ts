@@ -61,6 +61,7 @@ export interface TsumoState {
   goBackToParent: (
     parentNode: GraphNode | undefined,
     childConstraint: TsumoConstraint | undefined,
+    placedPair?: PuyoPair,
   ) => void
 }
 
@@ -225,11 +226,15 @@ export function useTsumoState({
     (
       parentNode: GraphNode | undefined,
       childConstraint: TsumoConstraint | undefined,
+      placedPair?: PuyoPair,
     ) => {
-      // 親ノードの確定配色でペアをリセット
+      // 親ノードの確定ツモでペアをリセット
+      // 確定ツモがない場合は辺のペア情報（1手前に置いたツモ）で補完する
       const parentConstraint = parentNode?.constraint
       if (parentConstraint?.currentPair) {
         setPairState(createInitialPairState(parentConstraint.currentPair))
+      } else if (placedPair) {
+        setPairState(createInitialPairState(placedPair))
       } else {
         setPairState(createInitialPairState(pairState.pair))
       }

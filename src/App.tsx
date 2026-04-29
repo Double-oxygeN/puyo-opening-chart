@@ -109,8 +109,11 @@ function App() {
     const parentId = findParentNodeId(graph, selectedNodeId)
     if (!parentId) return
     const parentNode = graph.nodes.find((n) => n.id === parentId)
+    const edge = graph.edges.find(
+      (e) => e.from === parentId && e.to === selectedNodeId,
+    )
     selectNode(parentId)
-    tsumo.goBackToParent(parentNode, selectedNode?.constraint)
+    tsumo.goBackToParent(parentNode, selectedNode?.constraint, edge?.pair)
   }, [graph, selectedNodeId, selectedNode, selectNode, tsumo])
 
   const handleExport = useCallback(() => {

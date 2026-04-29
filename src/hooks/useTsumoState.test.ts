@@ -187,5 +187,27 @@ describe('useTsumoState', () => {
       expect(result.current.next).toEqual(RED_PAIR)
       expect(result.current.nextNext).toEqual(BLUE_PAIR)
     })
+
+    it('親に確定ツモがない場合は辺のペア情報（placedPair）でツモを補完する', () => {
+      const { result } = renderUseTsumoState()
+
+      act(() => {
+        result.current.goBackToParent(undefined, undefined, GREEN_PAIR)
+      })
+
+      expect(result.current.effectivePair).toEqual(GREEN_PAIR)
+    })
+
+    it('親に確定ツモがある場合は placedPair より確定ツモを優先する', () => {
+      const { result } = renderUseTsumoState()
+      const parentNode = makeNode({ currentPair: BLUE_PAIR })
+
+      act(() => {
+        result.current.goBackToParent(parentNode, undefined, GREEN_PAIR)
+      })
+
+      // 親の確定ツモ（BLUE_PAIR）が優先される
+      expect(result.current.effectivePair).toEqual(BLUE_PAIR)
+    })
   })
 })

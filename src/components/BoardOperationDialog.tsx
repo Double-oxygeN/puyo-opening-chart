@@ -140,6 +140,7 @@ export default function BoardOperationDialog({
             pairState={pairState}
             onUpdatePairState={onUpdatePairState}
             onPlace={onPlace}
+            onGoBack={onGoBack}
           />
         )}
 
