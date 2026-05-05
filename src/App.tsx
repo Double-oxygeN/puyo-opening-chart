@@ -50,10 +50,14 @@ function App() {
   })
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [showProbability, setShowProbability] = useState(false)
 
   const probabilities = useMemo(
-    () => calculateReachProbabilities(graph, difficulty),
-    [graph, difficulty],
+    () =>
+      showProbability
+        ? calculateReachProbabilities(graph, difficulty)
+        : new Map<NodeId, number>(),
+    [graph, difficulty, showProbability],
   )
 
   const handleChangeDifficulty = useCallback(
@@ -173,6 +177,8 @@ function App() {
           onToggleRandomTsumo={tsumo.toggleRandomTsumo}
           randomNext={tsumo.randomNext}
           onToggleRandomNext={tsumo.toggleRandomNext}
+          showProbability={showProbability}
+          onToggleProbability={() => setShowProbability((prev) => !prev)}
           onExport={handleExport}
           onImport={handleImport}
           onReset={handleResetGraph}

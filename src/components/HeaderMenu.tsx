@@ -23,6 +23,8 @@ interface HeaderMenuProps {
   onToggleRandomTsumo: () => void
   randomNext: boolean
   onToggleRandomNext: () => void
+  showProbability: boolean
+  onToggleProbability: () => void
   onExport: () => void
   onImport: () => void
   onReset: () => void
@@ -35,6 +37,8 @@ export default function HeaderMenu({
   onToggleRandomTsumo,
   randomNext,
   onToggleRandomNext,
+  showProbability,
+  onToggleProbability,
   onExport,
   onImport,
   onReset,
@@ -150,6 +154,29 @@ export default function HeaderMenu({
               <span
                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform mt-0.5 ${
                   randomNext ? 'translate-x-4 ml-0.5' : 'translate-x-0 ml-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-500">
+              ツモ到達確率
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-label="ツモ到達確率"
+              aria-checked={showProbability}
+              onClick={onToggleProbability}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                showProbability ? 'bg-blue-500' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform mt-0.5 ${
+                  showProbability
+                    ? 'translate-x-4 ml-0.5'
+                    : 'translate-x-0 ml-0.5'
                 }`}
               />
             </button>

@@ -110,4 +110,24 @@ describe('App', () => {
     })
     expect(randomNextToggle).toHaveAttribute('aria-checked', 'false')
   })
+
+  it('shows probability toggle in header menu with default OFF', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(
+        screen.getByText('ぷよぷよ通 初手研究チャート'),
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('メニュー ▾'))
+
+    expect(screen.getByText('ツモ到達確率')).toBeInTheDocument()
+
+    // ツモ到達確率のトグルは既定でOFF
+    const probToggle = screen.getByRole('switch', {
+      name: 'ツモ到達確率',
+    })
+    expect(probToggle).toHaveAttribute('aria-checked', 'false')
+  })
 })
