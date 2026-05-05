@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { isDead } from './domain/board'
 import type { Difficulty } from './domain/difficulty'
 import { useGraph } from './hooks/useGraph'
@@ -23,6 +23,7 @@ import {
 } from './hooks/useGraphStorage'
 import type { NodeId } from './domain/graph'
 import { findParentNodeId } from './domain/graph'
+import { calculateReachProbabilities } from './domain/probability'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
 import HeaderMenu from './components/HeaderMenu'
@@ -49,6 +50,11 @@ function App() {
   })
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  const probabilities = useMemo(
+    () => calculateReachProbabilities(graph, difficulty),
+    [graph, difficulty],
+  )
 
   const handleChangeDifficulty = useCallback(
     (newDifficulty: Difficulty) => {
@@ -182,6 +188,7 @@ function App() {
             graph={graph}
             selectedNodeId={selectedNodeId}
             onSelectNode={handleSelectNode}
+            probabilities={probabilities}
           />
         </div>
       </div>

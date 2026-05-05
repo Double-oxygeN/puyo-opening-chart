@@ -22,6 +22,7 @@ interface GraphTreeViewProps {
   graph: Graph
   selectedNodeId: NodeId
   onSelectNode: (nodeId: NodeId) => void
+  probabilities: Map<NodeId, number>
 }
 
 interface TreeLayout {
@@ -34,7 +35,8 @@ interface TreeLayout {
 const THUMBNAIL_HEIGHT = 72
 const THUMBNAIL_WIDTH = Math.ceil((THUMBNAIL_HEIGHT / BOARD_ROWS) * BOARD_COLS)
 const NODE_WIDTH = THUMBNAIL_WIDTH + 8
-const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8
+const PROB_TEXT_HEIGHT = 14
+const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8 + PROB_TEXT_HEIGHT
 /** 深さ方向（左→右）のノード間隔 */
 const DEPTH_GAP = 96
 /** 兄弟方向（上→下）のノード間隔 */
@@ -235,10 +237,16 @@ function backEdgePath(
   }
 }
 
+/** 確率を百分率文字列にフォーマットする（小数点以下3桁） */
+function formatProbability(prob: number): string {
+  return `${(prob * 100).toFixed(3)}%`
+}
+
 export default function GraphTreeView({
   graph,
   selectedNodeId,
   onSelectNode,
+  probabilities,
 }: GraphTreeViewProps) {
   const layout = computeTreeLayout(graph)
   const padding = 40
@@ -317,25 +325,37 @@ export default function GraphTreeView({
           if (!pos) return null
 
           return (
-            <foreignObject
-              key={node.id}
-              x={pos.x - NODE_WIDTH / 2}
-              y={pos.y - NODE_HEIGHT / 2}
-              width={NODE_WIDTH}
-              height={NODE_HEIGHT}
-            >
-              <div className="flex items-center justify-center h-full">
-                <NodeThumbnail
-                  board={node.board}
-                  height={THUMBNAIL_HEIGHT}
-                  selected={node.id === selectedNodeId}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSelectNode(node.id)
-                  }}
-                />
-              </div>
-            </foreignObject>
+            <g key={node.id}>
+              <foreignObject
+                x={pos.x - NODE_WIDTH / 2}
+                y={pos.y - NODE_HEIGHT / 2}
+                width={NODE_WIDTH}
+                height={THUMBNAIL_HEIGHT + 8}
+              >
+                <div className="flex items-center justify-center h-full">
+                  <NodeThumbnail
+                    board={node.board}
+                    height={THUMBNAIL_HEIGHT}
+                    selected={node.id === selectedNodeId}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectNode(node.id)
+                    }}
+                  />
+                </div>
+              </foreignObject>
+              {probabilities.has(node.id) && (
+                <text
+                  x={pos.x}
+                  y={pos.y + NODE_HEIGHT / 2 - 1}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill="#6b7280"
+                >
+                  {formatProbability(probabilities.get(node.id)!)}
+                </text>
+              )}
+            </g>
           )
         })}
       </svg>
