@@ -242,6 +242,10 @@ function getMove1RefColors(
  * @param classifyPair - 軸色と子色からパターン文字列を返す分類関数
  * @param getPatternInfo - パターン文字列からペア数・確率情報を返す関数
  */
+function makePairKey(axis: FilledColor, child: FilledColor): string {
+  return `${axis},${child}`
+}
+
 function computeTransitions(
   transitionRow: number[],
   edges: readonly GraphEdge[],
@@ -251,6 +255,18 @@ function computeTransitions(
   classifyPair: (axis: FilledColor, child: FilledColor) => string,
   getPatternInfo: (pattern: string) => PatternInfo,
 ): void {
+  // (axis,child) → 遷移先NodeIdの集合 のMapを事前構築し、繰り返しfilterを避ける
+  const edgesByPair = new Map<string, Set<NodeId>>()
+  for (const edge of edges) {
+    const key = makePairKey(edge.pair.axis, edge.pair.child)
+    let dests = edgesByPair.get(key)
+    if (dests === undefined) {
+      dests = new Set()
+      edgesByPair.set(key, dests)
+    }
+    dests.add(edge.to)
+  }
+
   const patternGroups = new Map<
     string,
     { destPairCounts: Map<NodeId, number>; totalMatchedPairs: number }
@@ -268,20 +284,12 @@ function computeTransitions(
       }
       const group = patternGroups.get(pattern)!
 
-      let matchedEdges = edges.filter(
-        (e) => e.pair.axis === a && e.pair.child === b,
-      )
-      if (matchedEdges.length === 0 && a !== b) {
-        matchedEdges = edges.filter(
-          (e) => e.pair.axis === b && e.pair.child === a,
-        )
+      let dests = edgesByPair.get(makePairKey(a, b))
+      if ((dests === undefined || dests.size === 0) && a !== b) {
+        dests = edgesByPair.get(makePairKey(b, a))
       }
 
-      if (matchedEdges.length > 0) {
-        const dests = new Set<NodeId>()
-        for (const edge of matchedEdges) {
-          dests.add(edge.to)
-        }
+      if (dests !== undefined && dests.size > 0) {
         for (const dest of dests) {
           group.destPairCounts.set(
             dest,
