@@ -22,7 +22,7 @@ interface GraphTreeViewProps {
   graph: Graph
   selectedNodeId: NodeId
   onSelectNode: (nodeId: NodeId) => void
-  probabilities: Map<NodeId, number>
+  expectedCounts: Map<NodeId, number>
 }
 
 interface TreeLayout {
@@ -237,16 +237,16 @@ function backEdgePath(
   }
 }
 
-/** 確率を百分率文字列にフォーマットする（小数点以下3桁） */
-function formatProbability(prob: number): string {
-  return `${(prob * 100).toFixed(3)}%`
+/** 期待盤面再現回数を小数点以下4桁でフォーマットする */
+function formatExpectedCount(count: number): string {
+  return count.toFixed(4)
 }
 
 export default function GraphTreeView({
   graph,
   selectedNodeId,
   onSelectNode,
-  probabilities,
+  expectedCounts,
 }: GraphTreeViewProps) {
   const layout = computeTreeLayout(graph)
   const padding = 40
@@ -344,7 +344,7 @@ export default function GraphTreeView({
                   />
                 </div>
               </foreignObject>
-              {probabilities.has(node.id) && (
+              {expectedCounts.has(node.id) && (
                 <text
                   x={pos.x}
                   y={pos.y + NODE_HEIGHT / 2 - 1}
@@ -352,7 +352,7 @@ export default function GraphTreeView({
                   fontSize={10}
                   fill="#6b7280"
                 >
-                  {formatProbability(probabilities.get(node.id)!)}
+                  {formatExpectedCount(expectedCounts.get(node.id)!)}
                 </text>
               )}
             </g>

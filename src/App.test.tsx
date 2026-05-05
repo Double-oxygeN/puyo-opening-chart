@@ -111,7 +111,7 @@ describe('App', () => {
     expect(randomNextToggle).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('shows probability toggle in header menu with default OFF', async () => {
+  it('shows expected count toggle in header menu with default OFF', async () => {
     const user = userEvent.setup()
     render(<App />)
     await waitFor(() => {
@@ -122,12 +122,12 @@ describe('App', () => {
 
     await user.click(screen.getByText('メニュー ▾'))
 
-    expect(screen.getByText('ツモ到達確率')).toBeInTheDocument()
+    expect(screen.getByText('期待盤面再現回数')).toBeInTheDocument()
 
-    // ツモ到達確率のトグルは既定でOFF
-    const probToggle = screen.getByRole('switch', {
-      name: 'ツモ到達確率',
+    // 期待盤面再現回数のトグルは既定でOFF
+    const expectedCountToggle = screen.getByRole('switch', {
+      name: '期待盤面再現回数',
     })
-    expect(probToggle).toHaveAttribute('aria-checked', 'false')
+    expect(expectedCountToggle).toHaveAttribute('aria-checked', 'false')
   })
 })

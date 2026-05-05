@@ -21,7 +21,7 @@ import { createEmptyBoard } from './board'
 import { Difficulty } from './difficulty'
 import { Rotation } from './pair'
 import {
-  calculateReachProbabilities,
+  calculateExpectedBoardCounts,
   classifyMove1Pattern,
   classifyMove2Pattern,
   solveLinearSystem,
@@ -163,10 +163,10 @@ describe('solveLinearSystem', () => {
   })
 })
 
-describe('calculateReachProbabilities', () => {
+describe('calculateExpectedBoardCounts', () => {
   it('ルートのみ（エッジなし）: 空マップ', () => {
     const graph = makeGraph([makeNode('node-0')], [])
-    const result = calculateReachProbabilities(graph, Difficulty.Medium)
+    const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
     expect(result.size).toBe(0)
   })
 
@@ -176,7 +176,7 @@ describe('calculateReachProbabilities', () => {
         [makeNode('node-0'), makeNode('node-1')],
         [makeEdge('e-0', 'node-0', 'node-1', pair(R, R))],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
     })
 
@@ -185,7 +185,7 @@ describe('calculateReachProbabilities', () => {
         [makeNode('node-0'), makeNode('node-1')],
         [makeEdge('e-0', 'node-0', 'node-1', pair(R, G))],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
     })
 
@@ -197,7 +197,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-2', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(2 / 3)
     })
@@ -210,7 +210,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-1', pair(G, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
     })
 
@@ -222,7 +222,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-2', pair(G, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // AA分岐: N=4, probPerPair = C(3,2)/(9*C(4,3)) = 1/12
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 12)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(1 / 12)
@@ -237,7 +237,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-0', 'node-1', pair(B, B)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
     })
   })
@@ -251,7 +251,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-2', pair(G, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // AB分岐: N=4, probPerPair = C(2,1)/(9*C(4,3)) = 1/18
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 18)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(1 / 18)
@@ -262,7 +262,7 @@ describe('calculateReachProbabilities', () => {
         [makeNode('node-0'), makeNode('node-1')],
         [makeEdge('e-0', 'node-0', 'node-1', pair(R, G))],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // AB非分岐: (R,G)と(G,R)の両方がswapでnode-1へ → 2matched, 乗数=6/2=3
       // 確率 = 2/9 * 3 = 2/3
       expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
@@ -279,7 +279,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-2', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // 同じ順序付きペア(R,R)が複数先を持つ → 分岐ではない → 各 1/3
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(1 / 3)
@@ -293,7 +293,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-2', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(2 / 3)
     })
@@ -313,7 +313,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-0', 'node-3', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(1 / 3)
       expect(result.get('node-3' as NodeId)).toBeCloseTo(2 / 3)
@@ -331,7 +331,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
       // AAAB: matched=2 (R,G)+(G,R via swap), total=4, multiplier=2
       // 条件付き確率 = 2/9 * 2 = 4/9
@@ -347,7 +347,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(R, B)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
       // ABAC: ref={R,G}, (R,B)→ABAC. matched=2 ((R,B)+(B,R swap)), total=4, mult=2
       expect(result.get('node-2' as NodeId)).toBeCloseTo((2 / 3) * (4 / 9))
@@ -362,7 +362,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // ABAB: ref={R,G}, (R,G)→ABAB. matched=2 ((R,G)+(G,R swap)), total=2, mult=1
       expect(result.get('node-2' as NodeId)).toBeCloseTo((2 / 3) * (2 / 9))
     })
@@ -376,7 +376,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // AAAA: matched=1, total=1, mult=1
       expect(result.get('node-2' as NodeId)).toBeCloseTo((1 / 3) * (1 / 9))
     })
@@ -390,7 +390,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(B, B)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // ABCC: ref={R,G}, (B,B)→ABCC. matched=1, total=1, mult=1
       expect(result.get('node-2' as NodeId)).toBeCloseTo((2 / 3) * (1 / 9))
     })
@@ -413,7 +413,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-2', 'node-3', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // move1: AA=1/3, move2: AAAA=1/9, move3: (R,R)=1/16 (no pattern equiv)
       expect(result.get('node-3' as NodeId)).toBeCloseTo(
         (1 / 3) * (1 / 9) * (1 / 16),
@@ -434,7 +434,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-2', 'node-3', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Mild)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Mild)
       // 甘口: move3も3色、pair=(R,R)=1/9 (no pattern equiv at phase 2)
       expect(result.get('node-3' as NodeId)).toBeCloseTo(
         (1 / 3) * (1 / 9) * (1 / 9),
@@ -455,7 +455,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-2', 'node-3', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Hot)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Hot)
       // 辛口: move3は5色、pair=(R,R)=1/25 (no pattern equiv at phase 2)
       expect(result.get('node-3' as NodeId)).toBeCloseTo(
         (1 / 3) * (1 / 9) * (1 / 25),
@@ -483,7 +483,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-3', 'node-b', 'node-c', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // via A: 1/3 × 4/9 (AAAB)
       // via B: 2/3 × 2/9 (ABAB)
       const expected = (1 / 3) * (4 / 9) + (2 / 3) * (2 / 9)
@@ -502,7 +502,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-1', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // v1 = 1/3 (from root, phase 1)
       // v2 = v1 * 1/9 + v2 * 1/16 → v2 = (1/27) / (15/16) = 16/405
       // total = 1/3 + 16/405 = 135/405 + 16/405 = 151/405
@@ -521,7 +521,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-b', 'node-a', pair(R, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // v_a(phase1) = 1/3 (from root, AAAB to B at phase2)
       // v_a(phase2) = v_b(phase2) * 1/16
       // v_b(phase2) = v_a(phase1) * 4/9 + v_a(phase2) * 2/16
@@ -549,7 +549,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-2', 'node-3', pair(R, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // move3: (R,G) with swap → 2/16 = 1/8
       expect(result.get('node-3' as NodeId)).toBeCloseTo(
         (1 / 3) * (1 / 9) * (2 / 16),
@@ -581,7 +581,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-4', 'node-a', 'node-aabc', pair(G, B)),
         ],
       )
-      const rAA = calculateReachProbabilities(graphAA, Difficulty.Medium)
+      const rAA = calculateExpectedBoardCounts(graphAA, Difficulty.Medium)
       // 4パターンが分岐（各パターンが異なるノードへ）
       expect(rAA.get('node-aaaa' as NodeId)).toBeCloseTo((1 / 3) * (1 / 9))
       expect(rAA.get('node-aaab' as NodeId)).toBeCloseTo((1 / 3) * (4 / 9))
@@ -610,7 +610,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-4', 'node-a', 'node-abcc', pair(B, B)),
         ],
       )
-      const rAB = calculateReachProbabilities(graphAB, Difficulty.Medium)
+      const rAB = calculateExpectedBoardCounts(graphAB, Difficulty.Medium)
       expect(rAB.get('node-abaa' as NodeId)).toBeCloseTo((2 / 3) * (2 / 9))
       expect(rAB.get('node-abab' as NodeId)).toBeCloseTo((2 / 3) * (2 / 9))
       expect(rAB.get('node-abac' as NodeId)).toBeCloseTo((2 / 3) * (4 / 9))
@@ -641,7 +641,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-a', 'node-y', pair(G, R)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       // AAAB分岐: N=4, probPerPair = C(2,1)/(9*C(3,2)) = 2/27
       expect(result.get('node-x' as NodeId)).toBeCloseTo((1 / 3) * (2 / 27))
       expect(result.get('node-y' as NodeId)).toBeCloseTo((1 / 3) * (2 / 27))
@@ -665,7 +665,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-2', 'node-2', 'node-3', pair(Y, Y)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-3' as NodeId)).toBeCloseTo(
         (1 / 3) * (1 / 9) * (1 / 16),
       )
@@ -679,7 +679,7 @@ describe('calculateReachProbabilities', () => {
         [makeNode('node-0'), makeNode('node-1')],
         [makeEdge('e-0', 'node-0', 'node-1', pair(R, Y))],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
     })
 
@@ -689,7 +689,7 @@ describe('calculateReachProbabilities', () => {
         [makeNode('node-0'), makeNode('node-1')],
         [makeEdge('e-0', 'node-0', 'node-1', pair(Y, Y))],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 3)
     })
 
@@ -702,7 +702,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(B, Y)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(0)
     })
@@ -716,7 +716,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(B, B)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Mild)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Mild)
       expect(result.get('node-2' as NodeId)).toBeCloseTo((2 / 3) * (1 / 9))
     })
 
@@ -729,7 +729,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-0', 'node-2', pair(G, G)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Mild)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Mild)
       expect(result.get('node-1' as NodeId)).toBeCloseTo(1 / 9)
       expect(result.get('node-2' as NodeId)).toBeCloseTo(1 / 9)
     })
@@ -745,7 +745,7 @@ describe('calculateReachProbabilities', () => {
           makeEdge('e-1', 'node-1', 'node-2', pair(B, Y)),
         ],
       )
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.has('node-1' as NodeId)).toBe(true)
       expect(result.has('node-2' as NodeId)).toBe(true)
       expect(result.get('node-2' as NodeId)).toBe(0)
@@ -753,7 +753,7 @@ describe('calculateReachProbabilities', () => {
 
     it('エッジなしの孤立ノードも結果マップに含まれる', () => {
       const graph = makeGraph([makeNode('node-0'), makeNode('node-1')], [])
-      const result = calculateReachProbabilities(graph, Difficulty.Medium)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
       expect(result.has('node-1' as NodeId)).toBe(true)
       expect(result.get('node-1' as NodeId)).toBe(0)
     })

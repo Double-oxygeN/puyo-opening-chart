@@ -377,11 +377,12 @@ export function solveLinearSystem(A: number[][], b: number[]): number[] {
 }
 
 /**
- * グラフの初期盤面から各盤面への到達確率を計算する。
+ * グラフの初期盤面から各盤面への期待盤面再現回数を計算する。
  *
  * 状態空間 (NodeId, Phase) で Markov 連鎖を構成し、
  * 連立方程式 (I - Tᵀ)v = e₀ を解いて期待訪問回数を求める。
- * サイクルがなければ到達確率と一致する。
+ * サイクルがなければ到達確率と一致するが、サイクルがある場合は
+ * 1 を超える値になることがある。
  *
  * フェーズは3色制限ルールに対応し、1手目 (phase=0) と
  * 2手目 (phase=1) ではパターン分類による確率調整を行い、
@@ -389,10 +390,10 @@ export function solveLinearSystem(A: number[][], b: number[]): number[] {
  *
  * @param graph - 盤面遷移グラフ。最初のノードがルート（初期盤面）
  * @param difficulty - 難易度設定（使用可能な色数に影響する）
- * @returns ルートを除く各ノードIDをキー、到達確率（0〜1）を値とするマップ。
+ * @returns ルートを除く各ノードIDをキー、期待盤面再現回数を値とするマップ。
  *          ノードが1つ以下の場合は空マップを返す
  */
-export function calculateReachProbabilities(
+export function calculateExpectedBoardCounts(
   graph: Graph,
   difficulty: Difficulty,
 ): Map<NodeId, number> {
@@ -481,8 +482,8 @@ export function calculateReachProbabilities(
   for (let ni = 0; ni < N; ni++) {
     const nodeId = graph.nodes[ni].id
     if (nodeId === rootId) continue
-    const prob = v[ni * 3] + v[ni * 3 + 1] + v[ni * 3 + 2]
-    result.set(nodeId, Math.max(0, prob))
+    const count = v[ni * 3] + v[ni * 3 + 1] + v[ni * 3 + 2]
+    result.set(nodeId, Math.max(0, count))
   }
 
   return result

@@ -23,7 +23,7 @@ import {
 } from './hooks/useGraphStorage'
 import type { NodeId } from './domain/graph'
 import { findParentNodeId } from './domain/graph'
-import { calculateReachProbabilities } from './domain/probability'
+import { calculateExpectedBoardCounts } from './domain/probability'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
 import HeaderMenu from './components/HeaderMenu'
@@ -50,14 +50,14 @@ function App() {
   })
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [showProbability, setShowProbability] = useState(false)
+  const [showExpectedCount, setShowExpectedCount] = useState(false)
 
-  const probabilities = useMemo(
+  const expectedCounts = useMemo(
     () =>
-      showProbability
-        ? calculateReachProbabilities(graph, difficulty)
+      showExpectedCount
+        ? calculateExpectedBoardCounts(graph, difficulty)
         : new Map<NodeId, number>(),
-    [graph, difficulty, showProbability],
+    [graph, difficulty, showExpectedCount],
   )
 
   const handleChangeDifficulty = useCallback(
@@ -177,8 +177,8 @@ function App() {
           onToggleRandomTsumo={tsumo.toggleRandomTsumo}
           randomNext={tsumo.randomNext}
           onToggleRandomNext={tsumo.toggleRandomNext}
-          showProbability={showProbability}
-          onToggleProbability={() => setShowProbability((prev) => !prev)}
+          showExpectedCount={showExpectedCount}
+          onToggleExpectedCount={() => setShowExpectedCount((prev) => !prev)}
           onExport={handleExport}
           onImport={handleImport}
           onReset={handleResetGraph}
@@ -194,7 +194,7 @@ function App() {
             graph={graph}
             selectedNodeId={selectedNodeId}
             onSelectNode={handleSelectNode}
-            probabilities={probabilities}
+            expectedCounts={expectedCounts}
           />
         </div>
       </div>
