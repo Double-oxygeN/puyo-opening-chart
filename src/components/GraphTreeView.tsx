@@ -237,9 +237,10 @@ function backEdgePath(
   }
 }
 
-/** 期待盤面再現回数を小数点以下4桁でフォーマットする */
+/** 期待盤面再現回数を小数点以下5桁でフォーマットする。1未満の場合は先頭のゼロを省略する */
 function formatExpectedCount(count: number): string {
-  return count.toFixed(4)
+  const fixed = count.toFixed(5)
+  return count < 1 ? fixed.replace(/^0/, '') : fixed
 }
 
 export default function GraphTreeView({
