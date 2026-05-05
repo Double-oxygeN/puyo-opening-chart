@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Graph, NodeId, GraphEdge } from './graph'
+import type { Graph, GraphNode, NodeId, GraphEdge } from './graph'
 import type { Difficulty } from './difficulty'
 import type { FilledColor } from './color'
 import type { PuyoPair } from './pair'
 import { getAvailableColors } from './difficulty'
+
+/** 期待盤面再現回数の計算対象とする最大階層数（この階層未満のノードが対象） */
+export const MAX_DEPTH_LIMIT = 9
+
+/** 期待盤面再現回数の計算対象とするノード数の上限 */
+export const MAX_NODE_COUNT = 400
 
 /** 1手目の抽象パターン */
 export type Move1Pattern = 'AA' | 'AB'
@@ -377,6 +383,96 @@ export function solveLinearSystem(A: number[][], b: number[]): number[] {
 }
 
 /**
+ * ルートから各ノードへの最短階層（深さ）をBFSで計算する。
+ *
+ * ルート（`graph.nodes[0]`）を階層0とし、エッジの `from → to` 方向に
+ * 幅優先探索を行い、各ノードの最短階層を返す。
+ * ルートから到達不能なノードはマップに含まれない。
+ *
+ * @param graph - 対象のグラフ
+ * @returns 各ノードIDをキー、階層（深さ）を値とするマップ
+ */
+export function computeNodeDepths(graph: Graph): Map<NodeId, number> {
+  const depths = new Map<NodeId, number>()
+  if (graph.nodes.length === 0) return depths
+
+  const rootId = graph.nodes[0].id
+
+  const childrenMap = new Map<NodeId, NodeId[]>()
+  for (const edge of graph.edges) {
+    const children = childrenMap.get(edge.from) ?? []
+    children.push(edge.to)
+    childrenMap.set(edge.from, children)
+  }
+
+  const queue: { id: NodeId; depth: number }[] = [{ id: rootId, depth: 0 }]
+  depths.set(rootId, 0)
+
+  while (queue.length > 0) {
+    const { id, depth } = queue.shift()!
+    const children = childrenMap.get(id) ?? []
+    for (const childId of children) {
+      if (!depths.has(childId)) {
+        depths.set(childId, depth + 1)
+        queue.push({ id: childId, depth: depth + 1 })
+      }
+    }
+  }
+
+  return depths
+}
+
+/**
+ * 階層制限とノード数制限に基づきグラフをフィルタする。
+ *
+ * 1. `maxDepthLimit` 以上の階層のノードを除外する
+ * 2. 対象ノード数が `maxNodeCount` を超える場合、階層上限をさらに縮小する
+ * 3. 両端が対象ノードであるエッジのみを残す
+ *
+ * @param graph - 元のグラフ
+ * @param depths - 各ノードの階層マップ（`computeNodeDepths` の結果）
+ * @param maxDepthLimit - 対象とする最大階層数
+ * @param maxNodeCount - 対象ノード数の上限
+ * @returns フィルタ済みのノード配列とエッジ配列
+ */
+function filterGraphByDepth(
+  graph: Graph,
+  depths: ReadonlyMap<NodeId, number>,
+  maxDepthLimit: number,
+  maxNodeCount: number,
+): {
+  filteredNodes: readonly GraphNode[]
+  filteredEdges: readonly GraphEdge[]
+} {
+  let maxDepth = maxDepthLimit
+
+  while (maxDepth > 0) {
+    let count = 0
+    for (const node of graph.nodes) {
+      const d = depths.get(node.id)
+      if (d !== undefined && d < maxDepth) count++
+    }
+    if (count <= maxNodeCount) break
+    maxDepth--
+  }
+
+  const eligibleIds = new Set<NodeId>()
+  for (const node of graph.nodes) {
+    const d = depths.get(node.id)
+    if (d !== undefined && d < maxDepth) {
+      eligibleIds.add(node.id)
+    }
+  }
+
+  return {
+    filteredNodes: graph.nodes.filter((n) => eligibleIds.has(n.id)),
+    filteredEdges: graph.edges.filter(
+      (e) => eligibleIds.has(e.from) && eligibleIds.has(e.to),
+    ),
+  }
+}
+
+/**
  * グラフの初期盤面から各盤面への期待盤面再現回数を計算する。
  *
  * 状態空間 (NodeId, Phase) で Markov 連鎖を構成し、
@@ -384,14 +480,19 @@ export function solveLinearSystem(A: number[][], b: number[]): number[] {
  * サイクルがなければ到達確率と一致するが、サイクルがある場合は
  * 1 を超える値になることがある。
  *
+ * 計算量を抑えるため、以下の制限を適用する:
+ * - 階層 {@link MAX_DEPTH_LIMIT} 以上のノードは対象外とする
+ * - 対象ノード数が {@link MAX_NODE_COUNT} を超える場合は階層上限をさらに縮小する
+ * - 対象外ノードに関わるエッジは計算に含めない
+ *
  * フェーズは3色制限ルールに対応し、1手目 (phase=0) と
  * 2手目 (phase=1) ではパターン分類による確率調整を行い、
  * 3手目以降 (phase=2) では一様分布を使用する。
  *
  * @param graph - 盤面遷移グラフ。最初のノードがルート（初期盤面）
  * @param difficulty - 難易度設定（使用可能な色数に影響する）
- * @returns ルートを除く各ノードIDをキー、期待盤面再現回数を値とするマップ。
- *          ノードが1つ以下の場合は空マップを返す
+ * @returns 対象ノード（ルートを除く）のIDをキー、期待盤面再現回数を値とするマップ。
+ *          対象ノードが1つ以下の場合は空マップを返す
  */
 export function calculateExpectedBoardCounts(
   graph: Graph,
@@ -399,14 +500,24 @@ export function calculateExpectedBoardCounts(
 ): Map<NodeId, number> {
   if (graph.nodes.length <= 1) return new Map()
 
-  const rootId = graph.nodes[0].id
-  const N = graph.nodes.length
+  const depths = computeNodeDepths(graph)
+  const { filteredNodes, filteredEdges } = filterGraphByDepth(
+    graph,
+    depths,
+    MAX_DEPTH_LIMIT,
+    MAX_NODE_COUNT,
+  )
+
+  if (filteredNodes.length <= 1) return new Map()
+
+  const rootId = filteredNodes[0].id
+  const N = filteredNodes.length
 
   const nodeIndex = new Map<NodeId, number>()
-  graph.nodes.forEach((node, i) => nodeIndex.set(node.id, i))
+  filteredNodes.forEach((node, i) => nodeIndex.set(node.id, i))
 
   const outEdges = new Map<NodeId, GraphEdge[]>()
-  for (const edge of graph.edges) {
+  for (const edge of filteredEdges) {
     const list = outEdges.get(edge.from) ?? []
     list.push(edge)
     outEdges.set(edge.from, list)
@@ -421,7 +532,7 @@ export function calculateExpectedBoardCounts(
   const n = allColors.length
 
   for (let ni = 0; ni < N; ni++) {
-    const nodeId = graph.nodes[ni].id
+    const nodeId = filteredNodes[ni].id
     const edges = outEdges.get(nodeId) ?? []
 
     for (let phase = 0; phase < 3; phase++) {
@@ -440,7 +551,13 @@ export function calculateExpectedBoardCounts(
         )
       } else {
         const refColors =
-          phase === 1 ? getMove1RefColors(graph, nodeId, rootId) : null
+          phase === 1
+            ? getMove1RefColors(
+                { ...graph, edges: filteredEdges },
+                nodeId,
+                rootId,
+              )
+            : null
         if (refColors) {
           const refSize = refColors.size
           computeTransitions(
@@ -480,7 +597,7 @@ export function calculateExpectedBoardCounts(
 
   const result = new Map<NodeId, number>()
   for (let ni = 0; ni < N; ni++) {
-    const nodeId = graph.nodes[ni].id
+    const nodeId = filteredNodes[ni].id
     if (nodeId === rootId) continue
     const count = v[ni * 3] + v[ni * 3 + 1] + v[ni * 3 + 2]
     result.set(nodeId, Math.max(0, count))

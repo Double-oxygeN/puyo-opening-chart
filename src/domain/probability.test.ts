@@ -24,7 +24,10 @@ import {
   calculateExpectedBoardCounts,
   classifyMove1Pattern,
   classifyMove2Pattern,
+  computeNodeDepths,
   solveLinearSystem,
+  MAX_DEPTH_LIMIT,
+  MAX_NODE_COUNT,
 } from './probability'
 
 const R = PuyoColor.Red
@@ -751,11 +754,179 @@ describe('calculateExpectedBoardCounts', () => {
       expect(result.get('node-2' as NodeId)).toBe(0)
     })
 
-    it('エッジなしの孤立ノードも結果マップに含まれる', () => {
+    it('エッジなしの孤立ノードは結果マップに含まれない', () => {
       const graph = makeGraph([makeNode('node-0'), makeNode('node-1')], [])
       const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
-      expect(result.has('node-1' as NodeId)).toBe(true)
-      expect(result.get('node-1' as NodeId)).toBe(0)
+      expect(result.has('node-1' as NodeId)).toBe(false)
+    })
+  })
+
+  describe('computeNodeDepths', () => {
+    it('ルートのみ: 階層0', () => {
+      const graph = makeGraph([makeNode('node-0')], [])
+      const depths = computeNodeDepths(graph)
+      expect(depths.get('node-0' as NodeId)).toBe(0)
+      expect(depths.size).toBe(1)
+    })
+
+    it('直線グラフ: 階層が順に増加', () => {
+      const graph = makeGraph(
+        [makeNode('node-0'), makeNode('node-1'), makeNode('node-2')],
+        [
+          makeEdge('e-0', 'node-0', 'node-1', pair(R, G)),
+          makeEdge('e-1', 'node-1', 'node-2', pair(R, B)),
+        ],
+      )
+      const depths = computeNodeDepths(graph)
+      expect(depths.get('node-0' as NodeId)).toBe(0)
+      expect(depths.get('node-1' as NodeId)).toBe(1)
+      expect(depths.get('node-2' as NodeId)).toBe(2)
+    })
+
+    it('分岐グラフ: 同階層の兄弟ノード', () => {
+      const graph = makeGraph(
+        [
+          makeNode('node-0'),
+          makeNode('node-1'),
+          makeNode('node-2'),
+          makeNode('node-3'),
+        ],
+        [
+          makeEdge('e-0', 'node-0', 'node-1', pair(R, R)),
+          makeEdge('e-1', 'node-0', 'node-2', pair(R, G)),
+          makeEdge('e-2', 'node-1', 'node-3', pair(G, B)),
+        ],
+      )
+      const depths = computeNodeDepths(graph)
+      expect(depths.get('node-1' as NodeId)).toBe(1)
+      expect(depths.get('node-2' as NodeId)).toBe(1)
+      expect(depths.get('node-3' as NodeId)).toBe(2)
+    })
+
+    it('到達不能ノードはマップに含まれない', () => {
+      const graph = makeGraph(
+        [makeNode('node-0'), makeNode('node-1'), makeNode('node-2')],
+        [makeEdge('e-0', 'node-0', 'node-1', pair(R, G))],
+      )
+      const depths = computeNodeDepths(graph)
+      expect(depths.has('node-0' as NodeId)).toBe(true)
+      expect(depths.has('node-1' as NodeId)).toBe(true)
+      expect(depths.has('node-2' as NodeId)).toBe(false)
+    })
+
+    it('複数経路がある場合は最短階層を返す', () => {
+      // root → A (depth 1), root → B (depth 1), A → B (depth 2 だが最短は1)
+      const graph = makeGraph(
+        [makeNode('node-0'), makeNode('node-1'), makeNode('node-2')],
+        [
+          makeEdge('e-0', 'node-0', 'node-1', pair(R, G)),
+          makeEdge('e-1', 'node-0', 'node-2', pair(R, B)),
+          makeEdge('e-2', 'node-1', 'node-2', pair(G, B)),
+        ],
+      )
+      const depths = computeNodeDepths(graph)
+      expect(depths.get('node-2' as NodeId)).toBe(1)
+    })
+  })
+
+  describe('階層制限', () => {
+    /** 指定階層数の直線グラフを生成する */
+    function makeChainGraph(length: number): Graph {
+      const nodes: GraphNode[] = []
+      const edges: GraphEdge[] = []
+      for (let i = 0; i <= length; i++) {
+        nodes.push(makeNode(`node-${i}`))
+      }
+      for (let i = 0; i < length; i++) {
+        edges.push(makeEdge(`e-${i}`, `node-${i}`, `node-${i + 1}`, pair(R, G)))
+      }
+      return makeGraph(nodes, edges)
+    }
+
+    it(`階層 ${MAX_DEPTH_LIMIT} 以上のノードは結果に含まれない`, () => {
+      const graph = makeChainGraph(MAX_DEPTH_LIMIT + 1)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
+
+      // 階層 1 〜 MAX_DEPTH_LIMIT-1 は含まれる
+      for (let i = 1; i < MAX_DEPTH_LIMIT; i++) {
+        expect(result.has(`node-${i}` as NodeId)).toBe(true)
+      }
+      // 階層 MAX_DEPTH_LIMIT 以上は含まれない
+      expect(result.has(`node-${MAX_DEPTH_LIMIT}` as NodeId)).toBe(false)
+      expect(result.has(`node-${MAX_DEPTH_LIMIT + 1}` as NodeId)).toBe(false)
+    })
+
+    it('階層制限内のノードは通常通り計算される', () => {
+      // 2階層の単純グラフ（制限内）
+      const graph = makeChainGraph(2)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
+      expect(result.get('node-1' as NodeId)).toBeCloseTo(2 / 3)
+    })
+
+    it('対象外ノードから対象ノードへの逆辺は計算に影響しない', () => {
+      // root → A → B → ... → Z (MAX_DEPTH_LIMIT+1 階層)
+      // Z → A への逆辺がある場合、Zは対象外なので逆辺も無視される
+      const nodes: GraphNode[] = []
+      const edges: GraphEdge[] = []
+      for (let i = 0; i <= MAX_DEPTH_LIMIT; i++) {
+        nodes.push(makeNode(`node-${i}`))
+      }
+      for (let i = 0; i < MAX_DEPTH_LIMIT; i++) {
+        edges.push(makeEdge(`e-${i}`, `node-${i}`, `node-${i + 1}`, pair(R, G)))
+      }
+      // 対象外ノードから対象ノードへの逆辺
+      edges.push(
+        makeEdge(`e-back`, `node-${MAX_DEPTH_LIMIT}`, 'node-1', pair(G, R)),
+      )
+      const graphWithBack = makeGraph(nodes, edges)
+
+      // 逆辺なしのグラフ
+      const graphWithoutBack = makeChainGraph(MAX_DEPTH_LIMIT - 1)
+
+      const resultWith = calculateExpectedBoardCounts(
+        graphWithBack,
+        Difficulty.Medium,
+      )
+      const resultWithout = calculateExpectedBoardCounts(
+        graphWithoutBack,
+        Difficulty.Medium,
+      )
+
+      // 対象外ノードからの逆辺があっても結果は変わらない
+      for (let i = 1; i < MAX_DEPTH_LIMIT; i++) {
+        expect(resultWith.get(`node-${i}` as NodeId)).toBeCloseTo(
+          resultWithout.get(`node-${i}` as NodeId)!,
+        )
+      }
+    })
+  })
+
+  describe('ノード数制限', () => {
+    it(`対象ノード数が ${MAX_NODE_COUNT} を超えると階層が縮小される`, () => {
+      // 各階層に多数のノードを配置し、合計が MAX_NODE_COUNT を超えるグラフを構築
+      const nodes: GraphNode[] = [makeNode('node-0')]
+      const edges: GraphEdge[] = []
+      let nodeSeq = 1
+      let edgeSeq = 0
+      const nodesPerLevel = Math.ceil(MAX_NODE_COUNT / 3)
+
+      // 階層1〜5に nodesPerLevel ずつ配置（合計 > MAX_NODE_COUNT）
+      for (let depth = 1; depth <= 5; depth++) {
+        const parentId =
+          depth === 1 ? 'node-0' : `node-${1 + (depth - 2) * nodesPerLevel}`
+        for (let j = 0; j < nodesPerLevel; j++) {
+          const id = `node-${nodeSeq++}`
+          nodes.push(makeNode(id))
+          edges.push(makeEdge(`e-${edgeSeq++}`, parentId, id, pair(R, G)))
+        }
+      }
+
+      const graph = makeGraph(nodes, edges)
+      const result = calculateExpectedBoardCounts(graph, Difficulty.Medium)
+
+      // 最深階層のノードが除外されていることを確認
+      const resultSize = result.size
+      expect(resultSize).toBeLessThanOrEqual(MAX_NODE_COUNT)
     })
   })
 })
