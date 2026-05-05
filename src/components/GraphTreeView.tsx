@@ -22,6 +22,7 @@ interface GraphTreeViewProps {
   graph: Graph
   selectedNodeId: NodeId
   onSelectNode: (nodeId: NodeId) => void
+  expectedCounts: Map<NodeId, number>
 }
 
 interface TreeLayout {
@@ -34,7 +35,8 @@ interface TreeLayout {
 const THUMBNAIL_HEIGHT = 72
 const THUMBNAIL_WIDTH = Math.ceil((THUMBNAIL_HEIGHT / BOARD_ROWS) * BOARD_COLS)
 const NODE_WIDTH = THUMBNAIL_WIDTH + 8
-const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8
+const PROB_TEXT_HEIGHT = 14
+const NODE_HEIGHT = THUMBNAIL_HEIGHT + 8 + PROB_TEXT_HEIGHT
 /** 深さ方向（左→右）のノード間隔 */
 const DEPTH_GAP = 96
 /** 兄弟方向（上→下）のノード間隔 */
@@ -235,10 +237,17 @@ function backEdgePath(
   }
 }
 
+/** 期待盤面再現回数を小数点以下5桁でフォーマットする。1未満の場合は先頭のゼロを省略する */
+function formatExpectedCount(count: number): string {
+  const fixed = count.toFixed(5)
+  return count < 1 ? fixed.replace(/^0/, '') : fixed
+}
+
 export default function GraphTreeView({
   graph,
   selectedNodeId,
   onSelectNode,
+  expectedCounts,
 }: GraphTreeViewProps) {
   const layout = computeTreeLayout(graph)
   const padding = 40
@@ -317,25 +326,37 @@ export default function GraphTreeView({
           if (!pos) return null
 
           return (
-            <foreignObject
-              key={node.id}
-              x={pos.x - NODE_WIDTH / 2}
-              y={pos.y - NODE_HEIGHT / 2}
-              width={NODE_WIDTH}
-              height={NODE_HEIGHT}
-            >
-              <div className="flex items-center justify-center h-full">
-                <NodeThumbnail
-                  board={node.board}
-                  height={THUMBNAIL_HEIGHT}
-                  selected={node.id === selectedNodeId}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSelectNode(node.id)
-                  }}
-                />
-              </div>
-            </foreignObject>
+            <g key={node.id}>
+              <foreignObject
+                x={pos.x - NODE_WIDTH / 2}
+                y={pos.y - NODE_HEIGHT / 2}
+                width={NODE_WIDTH}
+                height={THUMBNAIL_HEIGHT + 8}
+              >
+                <div className="flex items-center justify-center h-full">
+                  <NodeThumbnail
+                    board={node.board}
+                    height={THUMBNAIL_HEIGHT}
+                    selected={node.id === selectedNodeId}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectNode(node.id)
+                    }}
+                  />
+                </div>
+              </foreignObject>
+              {expectedCounts.has(node.id) && (
+                <text
+                  x={pos.x}
+                  y={pos.y + NODE_HEIGHT / 2 - 1}
+                  textAnchor="middle"
+                  fontSize={10}
+                  fill="#6b7280"
+                >
+                  {formatExpectedCount(expectedCounts.get(node.id)!)}
+                </text>
+              )}
+            </g>
           )
         })}
       </svg>

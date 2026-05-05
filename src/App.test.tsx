@@ -110,4 +110,24 @@ describe('App', () => {
     })
     expect(randomNextToggle).toHaveAttribute('aria-checked', 'false')
   })
+
+  it('shows expected count toggle in header menu with default OFF', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(
+        screen.getByText('ぷよぷよ通 初手研究チャート'),
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('メニュー ▾'))
+
+    expect(screen.getByText('期待盤面再現回数')).toBeInTheDocument()
+
+    // 期待盤面再現回数のトグルは既定でOFF
+    const expectedCountToggle = screen.getByRole('switch', {
+      name: '期待盤面再現回数',
+    })
+    expect(expectedCountToggle).toHaveAttribute('aria-checked', 'false')
+  })
 })
