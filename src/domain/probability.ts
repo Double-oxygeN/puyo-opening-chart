@@ -224,6 +224,10 @@ function getMove1RefColors(
   return ref
 }
 
+function makePairKey(axis: FilledColor, child: FilledColor): string {
+  return `${axis},${child}`
+}
+
 /**
  * パターン等価性を適用した遷移確率を計算し、遷移行列の行に加算する。
  *
@@ -242,10 +246,6 @@ function getMove1RefColors(
  * @param classifyPair - 軸色と子色からパターン文字列を返す分類関数
  * @param getPatternInfo - パターン文字列からペア数・確率情報を返す関数
  */
-function makePairKey(axis: FilledColor, child: FilledColor): string {
-  return `${axis},${child}`
-}
-
 function computeTransitions(
   transitionRow: number[],
   edges: readonly GraphEdge[],
