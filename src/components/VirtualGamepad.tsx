@@ -58,7 +58,7 @@ export default function VirtualGamepad({
             className={btnClass}
             onPointerDown={handlePointerDown(() => onGoBack?.())}
           >
-            ↩
+            ↑
           </button>
           <div className={spacerClass} />
 
