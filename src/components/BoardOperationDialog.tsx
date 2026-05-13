@@ -93,11 +93,11 @@ export default function BoardOperationDialog({
       >
         <button
           type="button"
-          aria-label="閉じる"
           className="absolute top-3 right-3 w-7 h-7 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
           onClick={onClose}
         >
-          ×
+          <span aria-hidden="true">×</span>
+          <span className="sr-only">閉じる</span>
         </button>
         <h2 className="text-sm font-medium text-gray-500 text-center">
           盤面操作
