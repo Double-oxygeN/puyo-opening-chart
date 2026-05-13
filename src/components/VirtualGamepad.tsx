@@ -27,9 +27,12 @@ interface VirtualGamepadProps {
   onGoBack?: () => void
 }
 
-/** ゲームパッドボタンの共通スタイル */
+/** ゲームパッドボタンの共通スタイル（半透明） */
 const btnClass =
-  'flex items-center justify-center w-14 h-14 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-xl font-bold select-none touch-none cursor-pointer border border-gray-300 transition-colors'
+  'flex items-center justify-center w-12 h-12 rounded-xl bg-white/50 hover:bg-white/70 active:bg-white/80 text-xl font-bold select-none touch-none cursor-pointer border border-gray-300/60 backdrop-blur-sm transition-colors'
+
+/** 空白セルのスタイル */
+const spacerClass = 'w-12 h-12'
 
 export default function VirtualGamepad({
   pairState,
@@ -43,79 +46,87 @@ export default function VirtualGamepad({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 p-3 flex flex-col items-center gap-2">
-      {/* 回転・移動・設置ボタン */}
-      <div className="flex gap-3">
-        {/* 左回転 */}
-        <button
-          type="button"
-          aria-label="左回転"
-          className={btnClass}
-          onPointerDown={handlePointerDown(() =>
-            onUpdatePairState(rotateCounterClockwise(pairState)),
-          )}
-        >
-          ↺
-        </button>
+    <div className="fixed bottom-0 left-0 right-0 z-50 p-3 flex justify-center">
+      <div className="flex items-center gap-4">
+        {/* 左ブロック: 十字ボタン */}
+        <div className="grid grid-cols-3 gap-1">
+          {/* 上段: 1手戻す（上方向） */}
+          <div className={spacerClass} />
+          <button
+            type="button"
+            aria-label="1手戻す"
+            className={btnClass}
+            onPointerDown={handlePointerDown(() => onGoBack?.())}
+          >
+            ↩
+          </button>
+          <div className={spacerClass} />
 
-        {/* 左移動 */}
-        <button
-          type="button"
-          aria-label="左移動"
-          className={btnClass}
-          onPointerDown={handlePointerDown(() =>
-            onUpdatePairState(moveLeft(pairState)),
-          )}
-        >
-          ←
-        </button>
+          {/* 中段: 左右移動 */}
+          <button
+            type="button"
+            aria-label="左移動"
+            className={btnClass}
+            onPointerDown={handlePointerDown(() =>
+              onUpdatePairState(moveLeft(pairState)),
+            )}
+          >
+            ←
+          </button>
+          <div className={spacerClass} />
+          <button
+            type="button"
+            aria-label="右移動"
+            className={btnClass}
+            onPointerDown={handlePointerDown(() =>
+              onUpdatePairState(moveRight(pairState)),
+            )}
+          >
+            →
+          </button>
 
-        {/* 設置 */}
-        <button
-          type="button"
-          aria-label="設置"
-          className={btnClass}
-          onPointerDown={handlePointerDown(onPlace)}
-        >
-          ↓
-        </button>
+          {/* 下段: 設置（下方向） */}
+          <div className={spacerClass} />
+          <button
+            type="button"
+            aria-label="設置"
+            className={btnClass}
+            onPointerDown={handlePointerDown(onPlace)}
+          >
+            ↓
+          </button>
+          <div className={spacerClass} />
+        </div>
 
-        {/* 右移動 */}
-        <button
-          type="button"
-          aria-label="右移動"
-          className={btnClass}
-          onPointerDown={handlePointerDown(() =>
-            onUpdatePairState(moveRight(pairState)),
-          )}
-        >
-          →
-        </button>
+        {/* 右ブロック: 回転ボタン（右・下のみ、上・左は非表示） */}
+        <div className="grid grid-cols-2 gap-1">
+          {/* 上段: (左は非表示) 右回転（右方向） */}
+          <div className={spacerClass} />
+          <button
+            type="button"
+            aria-label="右回転"
+            className={btnClass}
+            onPointerDown={handlePointerDown(() =>
+              onUpdatePairState(rotateClockwise(pairState)),
+            )}
+          >
+            ↻
+          </button>
 
-        {/* 右回転 */}
-        <button
-          type="button"
-          aria-label="右回転"
-          className={btnClass}
-          onPointerDown={handlePointerDown(() =>
-            onUpdatePairState(rotateClockwise(pairState)),
-          )}
-        >
-          ↻
-        </button>
+          {/* 下段: 左回転（下方向）、右は非表示 */}
+          <button
+            type="button"
+            aria-label="左回転"
+            className={btnClass}
+            onPointerDown={handlePointerDown(() =>
+              onUpdatePairState(rotateCounterClockwise(pairState)),
+            )}
+          >
+            ↺
+          </button>
+          <div className={spacerClass} />
+        </div>
       </div>
-
-      {/* 1手戻すボタン */}
-      {onGoBack && (
-        <button
-          type="button"
-          aria-label="1手戻す"
-          className="px-6 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-sm font-medium select-none touch-none cursor-pointer border border-gray-300 transition-colors"
-          onPointerDown={handlePointerDown(onGoBack)}
-        >
-          1手戻す
-        </button>
-      )}
     </div>
   )
 }
