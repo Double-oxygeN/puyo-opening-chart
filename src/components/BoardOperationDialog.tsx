@@ -98,7 +98,6 @@ export default function BoardOperationDialog({
           onClick={onClose}
         >
           <span aria-hidden="true">×</span>
-          <span className="sr-only">閉じる</span>
         </button>
         <h2 className="text-sm font-medium text-gray-500 text-center">
           盤面操作
