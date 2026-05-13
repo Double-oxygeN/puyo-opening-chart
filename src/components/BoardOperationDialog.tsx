@@ -86,9 +86,10 @@ export default function BoardOperationDialog({
   }
 
   return (
-    <div className="fixed top-0 right-0 bottom-0 z-50 pointer-events-none flex items-start justify-end p-6 pt-20">
+    // top-14 (56px) はヘッダーの高さ (py-3 + text-xl ≈ 53px) に合わせた値
+    <div className="fixed top-14 right-0 bottom-0 left-0 z-40 overflow-auto sm:top-0 sm:left-auto sm:overflow-visible sm:pointer-events-none sm:flex sm:items-start sm:justify-end sm:p-6 sm:pt-20">
       <div
-        className="pointer-events-auto relative bg-white rounded-xl shadow-2xl border border-gray-200 p-6 flex flex-col gap-4 max-h-full overflow-auto"
+        className="pointer-events-auto relative bg-white p-4 sm:p-6 flex flex-col gap-4 min-h-full sm:min-h-0 sm:rounded-xl sm:shadow-2xl sm:border sm:border-gray-200 sm:max-h-full sm:overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
