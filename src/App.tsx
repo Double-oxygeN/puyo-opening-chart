@@ -218,6 +218,7 @@ function App() {
           nextEditable={tsumo.lockedNext === null}
           dead={currentBoardDead}
           memo={selectedNode?.memo ?? ''}
+          onClose={handleBackgroundClick}
           onSaveMemo={handleSaveMemo}
           onDeleteNode={
             selectedNodeId !== graph.nodes[0]?.id ? handleDeleteNode : undefined

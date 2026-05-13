@@ -58,6 +58,17 @@ test('closes dialog on background click', async ({ page }) => {
   await expect(page.getByText('盤面操作')).not.toBeVisible()
 })
 
+test('closes dialog with close button', async ({ page }) => {
+  await page.goto('/')
+
+  const node = page.getByRole('button', { name: '盤面ノード' }).first()
+  await node.click()
+  await expect(page.getByText('盤面操作')).toBeVisible()
+
+  await page.getByRole('button', { name: '閉じる' }).click()
+  await expect(page.getByText('盤面操作')).not.toBeVisible()
+})
+
 test('shows suffocation message and hides pair controls on dead board', async ({
   page,
 }) => {

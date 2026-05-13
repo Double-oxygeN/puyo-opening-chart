@@ -46,6 +46,24 @@ describe('App', () => {
     expect(screen.queryByText('盤面操作')).not.toBeInTheDocument()
   })
 
+  it('closes board operation dialog with close button', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await waitFor(() => {
+      expect(
+        screen.getByText('ぷよぷよ通 初手研究チャート'),
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: '盤面ノード' }))
+    expect(screen.getByText('盤面操作')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '閉じる' }))
+    await waitFor(() => {
+      expect(screen.queryByText('盤面操作')).not.toBeInTheDocument()
+    })
+  })
+
   it('opens and closes the header menu', async () => {
     const user = userEvent.setup()
     render(<App />)
