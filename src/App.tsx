@@ -27,6 +27,7 @@ import { calculateExpectedBoardCounts } from './domain/probability'
 import BoardOperationDialog from './components/BoardOperationDialog'
 import GraphTreeView from './components/GraphTreeView'
 import HeaderMenu from './components/HeaderMenu'
+import VirtualGamepad from './components/VirtualGamepad'
 
 function App() {
   const {
@@ -51,6 +52,7 @@ function App() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [showExpectedCount, setShowExpectedCount] = useState(false)
+  const [showVirtualGamepad, setShowVirtualGamepad] = useState(false)
 
   const expectedCounts = useMemo(
     () =>
@@ -179,6 +181,8 @@ function App() {
           onToggleRandomNext={tsumo.toggleRandomNext}
           showExpectedCount={showExpectedCount}
           onToggleExpectedCount={() => setShowExpectedCount((prev) => !prev)}
+          showVirtualGamepad={showVirtualGamepad}
+          onToggleVirtualGamepad={() => setShowVirtualGamepad((prev) => !prev)}
           onExport={handleExport}
           onImport={handleImport}
           onReset={handleResetGraph}
@@ -223,6 +227,17 @@ function App() {
           onDeleteNode={
             selectedNodeId !== graph.nodes[0]?.id ? handleDeleteNode : undefined
           }
+          onGoBack={
+            selectedNodeId !== graph.nodes[0]?.id ? handleGoBack : undefined
+          }
+        />
+      )}
+
+      {isDialogOpen && showVirtualGamepad && !currentBoardDead && (
+        <VirtualGamepad
+          pairState={tsumo.pairState}
+          onUpdatePairState={tsumo.setPairState}
+          onPlace={tsumo.place}
           onGoBack={
             selectedNodeId !== graph.nodes[0]?.id ? handleGoBack : undefined
           }
