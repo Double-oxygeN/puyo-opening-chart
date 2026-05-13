@@ -25,6 +25,8 @@ interface HeaderMenuProps {
   onToggleRandomNext: () => void
   showExpectedCount: boolean
   onToggleExpectedCount: () => void
+  showVirtualGamepad: boolean
+  onToggleVirtualGamepad: () => void
   onExport: () => void
   onImport: () => void
   onReset: () => void
@@ -39,6 +41,8 @@ export default function HeaderMenu({
   onToggleRandomNext,
   showExpectedCount,
   onToggleExpectedCount,
+  showVirtualGamepad,
+  onToggleVirtualGamepad,
   onExport,
   onImport,
   onReset,
@@ -175,6 +179,29 @@ export default function HeaderMenu({
               <span
                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform mt-0.5 ${
                   showExpectedCount
+                    ? 'translate-x-4 ml-0.5'
+                    : 'translate-x-0 ml-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-500">
+              仮想ゲームパッド
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-label="仮想ゲームパッド"
+              aria-checked={showVirtualGamepad}
+              onClick={onToggleVirtualGamepad}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${
+                showVirtualGamepad ? 'bg-blue-500' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform mt-0.5 ${
+                  showVirtualGamepad
                     ? 'translate-x-4 ml-0.5'
                     : 'translate-x-0 ml-0.5'
                 }`}
