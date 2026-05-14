@@ -17,13 +17,14 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { PuyoColor } from '../domain/color'
+import type { PairState } from '../domain/pair'
 import { createInitialPairState } from '../domain/pair'
 import { useKeyboardInput } from './useKeyboardInput'
 
 interface TestHarnessProps {
-  onUpdatePairState: ReturnType<typeof vi.fn>
-  onPlace: ReturnType<typeof vi.fn>
-  onGoBack: ReturnType<typeof vi.fn>
+  onUpdatePairState: (state: PairState) => void
+  onPlace: () => void
+  onGoBack: () => void
 }
 
 function TestHarness({
