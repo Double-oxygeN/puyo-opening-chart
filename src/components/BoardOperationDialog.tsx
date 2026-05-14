@@ -50,6 +50,8 @@ interface BoardOperationDialogProps {
   onDeleteNode?: () => void
   /** 1手戻すコールバック（ルートノードの場合は undefined） */
   onGoBack?: () => void
+  /** 仮想ゲームパッドが表示されているか（モバイルで下部余白を追加するために使用） */
+  hasVirtualGamepad?: boolean
 }
 
 export default function BoardOperationDialog({
@@ -74,6 +76,7 @@ export default function BoardOperationDialog({
   onSaveMemo,
   onDeleteNode,
   onGoBack,
+  hasVirtualGamepad = false,
 }: BoardOperationDialogProps) {
   const [draftMemo, setDraftMemo] = useState(memo)
   const isDirty = draftMemo !== memo
@@ -89,7 +92,7 @@ export default function BoardOperationDialog({
     // top-14 (56px) はヘッダーの高さ (py-3 + text-xl ≈ 53px) に合わせた値
     <div className="fixed top-14 right-0 bottom-0 left-0 z-40 overflow-auto sm:top-0 sm:left-auto sm:overflow-visible sm:pointer-events-none sm:flex sm:items-start sm:justify-end sm:p-6 sm:pt-20">
       <div
-        className="pointer-events-auto relative bg-white p-4 sm:p-6 flex flex-col gap-4 min-h-full sm:min-h-0 sm:rounded-xl sm:shadow-2xl sm:border sm:border-gray-200 sm:max-h-full sm:overflow-auto"
+        className={`pointer-events-auto relative bg-white p-4 sm:p-6 flex flex-col gap-4 min-h-full sm:min-h-0 sm:rounded-xl sm:shadow-2xl sm:border sm:border-gray-200 sm:max-h-full sm:overflow-auto${hasVirtualGamepad ? ' pb-44 sm:pb-6' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         <button

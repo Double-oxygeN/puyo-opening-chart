@@ -230,6 +230,7 @@ function App() {
           onGoBack={
             selectedNodeId !== graph.nodes[0]?.id ? handleGoBack : undefined
           }
+          hasVirtualGamepad={showVirtualGamepad && !currentBoardDead}
         />
       )}
 
