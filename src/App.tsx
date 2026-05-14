@@ -168,7 +168,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* ヘッダー */}
-      <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">
           ぷよぷよ通 初手研究チャート
         </h1>
@@ -230,6 +230,7 @@ function App() {
           onGoBack={
             selectedNodeId !== graph.nodes[0]?.id ? handleGoBack : undefined
           }
+          hasVirtualGamepad={showVirtualGamepad && !currentBoardDead}
         />
       )}
 
