@@ -29,6 +29,17 @@ interface UseKeyboardInputOptions {
   enabled?: boolean
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  )
+}
+
 export function useKeyboardInput({
   pairState,
   onUpdatePairState,
@@ -39,6 +50,7 @@ export function useKeyboardInput({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!enabled) return
+      if (isEditableTarget(e.target)) return
 
       switch (e.key) {
         case 'ArrowLeft':
