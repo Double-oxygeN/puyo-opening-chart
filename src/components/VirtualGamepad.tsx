@@ -46,8 +46,8 @@ export default function VirtualGamepad({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-3 flex justify-center">
-      <div className="flex items-center gap-4">
+    <div className="fixed bottom-0 left-0 right-0 z-50 p-3 flex justify-center pointer-events-none">
+      <div className="flex items-center gap-4 pointer-events-auto">
         {/* 左ブロック: 十字ボタン */}
         <div className="grid grid-cols-3 gap-1">
           {/* 上段: 1手戻す（上方向） */}
